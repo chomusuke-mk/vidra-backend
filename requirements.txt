@@ -1,0 +1,11 @@
+brotli
+certifi
+cffi
+flask
+mutagen
+pycryptodomex
+requests
+secretstorage
+waitress
+websockets
+yt-dlp-ejs
