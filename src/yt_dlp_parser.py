@@ -20,6 +20,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "live_from_start": True,
     "wait_for_video": False,
     "mark_watched": False,
+    "js_runtimes": {},
     "proxy": "",
     "socket_timeout": "infinite",
     "source_address": "",
@@ -97,6 +98,7 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "live_from_start" in options
         and "wait_for_video" in options
         and "mark_watched" in options
+        and "js_runtimes" in options
         and "proxy" in options
         and "socket_timeout" in options
         and "source_address" in options
@@ -167,6 +169,7 @@ def options_parser(options: VidraOptions) -> List[str]:
     live_from_start = options["live_from_start"]
     wait_for_video = options["wait_for_video"]
     mark_watched = options["mark_watched"]
+    js_runtimes = options["js_runtimes"]
     proxy = options["proxy"]
     socket_timeout = options["socket_timeout"]
     source_address = options["source_address"]
@@ -302,6 +305,9 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.append("--mark-watched")
     else:
         comando.append("--no-mark-watched")
+    if js_runtimes:
+        for runtime, path in js_runtimes.items():
+            comando.extend(["--js-runtime", f"{runtime}:{path}"])
     # Network Options
     if proxy:
         comando.extend(["--proxy", proxy])

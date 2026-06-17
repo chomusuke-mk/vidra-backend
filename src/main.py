@@ -14,6 +14,12 @@ TEMP_PATH = os.environ.get("TEMP_PATH", "./temp/temp")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 5000))
 
+XDG_CONFIG_HOME = os.path.join(DATA_PATH, "yt-dlp")
+XDG_CACHE_HOME = os.path.join(TEMP_PATH, "yt-dlp")
+
+os.makedirs(XDG_CONFIG_HOME, exist_ok=True)
+os.makedirs(XDG_CACHE_HOME, exist_ok=True)
+
 # --- CONFIGURACIÓN DE CERTIFICADOS Y RUTAS ---
 cert_path = certifi.where()
 os.environ["SSL_CERT_FILE"] = cert_path

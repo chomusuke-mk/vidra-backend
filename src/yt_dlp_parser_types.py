@@ -213,6 +213,9 @@ VIDEO_OPTIONS: Final = get_args(T_VIDEO_OPTIONS)
 T_SUBTITLE_OPTIONS = Literal["none", T_LANGUAGE, "all"]
 SUBTITLE_OPTIONS: Final = get_args(T_SUBTITLE_OPTIONS)
 
+T_JS_RUNTIMES_KEYS = Literal["deno", "node", "quickjs", "bun"]
+JS_RUNTIMES_KEYS: Final = get_args(T_JS_RUNTIMES_KEYS)
+
 T_BROWSERS = Literal[
     "brave",
     "chrome",
@@ -425,6 +428,8 @@ class VidraOptions(TypedDict):
     wait_for_video: NotRequired[Union[Literal[False], int]]
     # Marca el video como visto (si el sitio lo soporta).
     mark_watched: NotRequired[bool]
+    # Entorno de ejecución para scripts JavaScript (deno, node, quickjs, bun).
+    js_runtimes: NotRequired[Dict[T_JS_RUNTIMES_KEYS, str]]
     # Network Options ===========================================================================
     # Proxy HTTP/HTTPS/SOCKS. Ejemplo: socks5://user:pass@127.0.0.1:1080
     proxy: NotRequired[str]
@@ -610,6 +615,15 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                 return False
         elif key == "mark_watched":
             if not isinstance(value, bool):
+                return False
+        elif key == "js_runtimes":
+            if not (
+                isinstance(value, dict)
+                and all(
+                    isinstance(k, str) and k in JS_RUNTIMES_KEYS and isinstance(v, str)
+                    for k, v in value.items()
+                )
+            ):
                 return False
         elif key == "proxy":
             if not isinstance(value, str):

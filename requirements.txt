@@ -8,4 +8,3 @@ requests
 secretstorage
 waitress
 websockets
-yt-dlp-ejs
