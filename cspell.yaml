@@ -2,27 +2,35 @@ words:
   - ansi
   - bestaudio
   - bestvideo
+  - cffi
   - chomusuke
   - deno
+  - descomentar
   - desuscribir
   - executemany
+  - getpid
   - gmtime
   - infojson
   - minimalistas
   - multistreams
   - offtopic
   - patreon
+  - phantomjs
   - quickjs
+  - Reintentando
   - Sanitizar
   - selfpromo
+  - síncrono
   - sponsorblock
   - twofactor
   - venv
   - vidra
   - Vidra
   - vimeo
+  - xattr
   - xattrs
   - youtube
   - Youtube
   - ytdl
+  - ytdlp
   - YTDLP

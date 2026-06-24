@@ -2,14 +2,16 @@ from flask import Flask, jsonify, request, Response
 from functools import wraps
 import certifi
 import os
+import threading
+import _thread
 from app import App
 
 # --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
 ENV = os.environ.get("APP_ENV", "development")
 API_TOKEN = os.environ.get("API_TOKEN", "SUPER_SECRET_TOKEN")
-LOGS_PATH = os.environ.get("LOGS_PATH", "./temp/logs")
-DATA_PATH = os.environ.get("DATA_PATH", "./temp/data")
-TEMP_PATH = os.environ.get("TEMP_PATH", "./temp/temp")
+LOGS_PATH = os.path.abspath(os.environ.get("LOGS_PATH", "./temp/logs"))
+DATA_PATH = os.path.abspath(os.environ.get("DATA_PATH", "./temp/data"))
+TEMP_PATH = os.path.abspath(os.environ.get("TEMP_PATH", "./temp/temp"))
 
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 5000))
@@ -57,11 +59,35 @@ def token_required(f):
 
 # --- RUTAS ---
 @server.route("/", methods=["GET"])
+@token_required
 def health_check():
     return jsonify({"status": "ok"})
 
+@server.route("/shutdown", methods=["POST"])
+@token_required
+def shutdown():
+    try:
+        # Llamamos al apagado síncrono de tu aplicación para guardar BD
+        app.shutdown()
+
+        def kill_server():
+            # En lugar de matar todo el contenedor del OS con os._exit(0),
+            # le enviamos una interrupción suave al hilo principal de Python.
+            # Esto hará que Waitress cierre los puertos y la ejecución termine pacíficamente,
+            # dejando a Flutter vivo y coleando.
+            # NO TOCAR: ESTE HACK PERMITE REINICIAR SERIOUS_PYTHON EN CALIENTE
+            _thread.interrupt_main()
+
+        # Damos medio segundo para que Flask alcance a devolver la respuesta HTTP 200 a Flutter
+        threading.Timer(0.5, kill_server).start()
+
+        return jsonify({"message": "Shutting down..."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @server.route("/favicon.ico")
+@token_required
 def favicon():
     svg_content = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -76,8 +102,9 @@ def favicon():
 @token_required
 def get_logs():
     download_id = request.args.get("id")
+    limit = request.args.get("limit", default=300, type=int)
     try:
-        logs = app.get_logs(id=download_id)
+        logs = app.get_logs(id=download_id, limit=limit)
         return Response(logs, mimetype="text/plain")
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -152,6 +179,8 @@ def select_entries():
     entries = request.get_json().get("entries")
     if not download_id or not entries:
         return jsonify({"error": "ID and entries are required"}), 400
+    if not isinstance(entries, list) or not all(isinstance(e, str) for e in entries):
+        return jsonify({"error": "Entries must be a list of strings(IDS)"}), 400
     try:
         app.select_entries(id=download_id, entries=entries)
         return jsonify({"message": "Entries selected successfully"})
@@ -182,5 +211,5 @@ if ENV != "production":
 else:
     from waitress import serve
 
-    print(f"Iniciando Waitress en {HOST}:{PORT} con 2 hilos...")
-    serve(server, host=HOST, port=PORT, threads=2)
+    print(f"Iniciando Waitress en {HOST}:{PORT} con 16 hilos...")
+    serve(server, host=HOST, port=PORT, threads=16)

@@ -10,17 +10,17 @@ from yt_dlp_parser_types import (
 )
 
 DEFAULT_OPTIONS: Final[VidraOptions] = {
-    "audio": "default",
-    "video": "default",
-    "subtitles": "default",
+    "audio_language": "default",
+    "video_resolution": "default",
+    "sub_langs": [],
+    "extract_audio": False,
+    "playlist": False,
+    "sponsorblock_mark": [],
+    "sponsorblock_remove": [],
     "ignore_errors": False,  # True=Ignorar errores, no lanzar excepción
     "abort_on_error": False,  # False=Si se lanza excepción, esta es ignorada
-    "use_extractors": ["default"],
+    "use_extractors": ["all"],
     "flat_playlist": False,
-    "live_from_start": True,
-    "wait_for_video": False,
-    "mark_watched": False,
-    "js_runtimes": {},
     "proxy": "",
     "socket_timeout": "infinite",
     "source_address": "",
@@ -42,7 +42,6 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "audio_multistreams": True,
     "merge_output_format": "mkv",
     "audio_format": "best",
-    "extract_audio": False,
     "audio_quality": 0,
     "remux_video": False,
     "embed_subs": True,
@@ -58,28 +57,28 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "write_subs": False,
     "write_auto_subs": False,
     "sub_format": "srt",
-    "sub_langs": [],
     "output": ["title", "-", "id", ".", "ext"],
     "paths": {},
     "download_archive": False,
-    "playlist": False,
     "playlist_items": "all",
     "concurrent_fragments": 1,
     "break_on_existing": False,
-    "skip_playlist_after_errors": "infinite",
-    "retries": 10,
-    "file_access_retries": 3,
-    "fragment_retries": 10,
+    "windows_filenames": True,
+    "live_from_start": True,
+    "wait_for_video": False,
+    "mark_watched": False,
+    "js_runtimes": {},
     "abort_on_unavailable_fragments": False,
     "keep_fragments": False,
     "batch_file": False,
     "force_overwrites": True,
     "write_thumbnail": False,
-    "sponsorblock_mark": [],
-    "sponsorblock_remove": [],
+    "skip_playlist_after_errors": "infinite",
+    "retries": 10,
+    "file_access_retries": 3,
+    "fragment_retries": 10,
     "extractor_retries": 3,
     "limit_rate": False,
-    "windows_filenames": True,
 }
 
 
@@ -88,17 +87,17 @@ def options_parser(options: VidraOptions) -> List[str]:
     for key, value in DEFAULT_OPTIONS.items():
         options.setdefault(key, value)  # type: ignore
     assert (
-        "audio" in options
-        and "video" in options
-        and "subtitles" in options
+        "video_resolution" in options
+        and "audio_language" in options
+        and "sub_langs" in options
+        and "extract_audio" in options
+        and "playlist" in options
+        and "sponsorblock_mark" in options
+        and "sponsorblock_remove" in options
         and "ignore_errors" in options
         and "abort_on_error" in options
         and "use_extractors" in options
         and "flat_playlist" in options
-        and "live_from_start" in options
-        and "wait_for_video" in options
-        and "mark_watched" in options
-        and "js_runtimes" in options
         and "proxy" in options
         and "socket_timeout" in options
         and "source_address" in options
@@ -120,7 +119,6 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "audio_multistreams" in options
         and "merge_output_format" in options
         and "audio_format" in options
-        and "extract_audio" in options
         and "audio_quality" in options
         and "remux_video" in options
         and "embed_subs" in options
@@ -136,40 +134,40 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "write_subs" in options
         and "write_auto_subs" in options
         and "sub_format" in options
-        and "sub_langs" in options
         and "output" in options
         and "paths" in options
         and "download_archive" in options
-        and "playlist" in options
         and "playlist_items" in options
         and "concurrent_fragments" in options
         and "break_on_existing" in options
-        and "skip_playlist_after_errors" in options
-        and "retries" in options
-        and "file_access_retries" in options
-        and "fragment_retries" in options
+        and "windows_filenames" in options
+        and "live_from_start" in options
+        and "wait_for_video" in options
+        and "mark_watched" in options
+        and "js_runtimes" in options
         and "abort_on_unavailable_fragments" in options
         and "keep_fragments" in options
         and "batch_file" in options
         and "force_overwrites" in options
         and "write_thumbnail" in options
-        and "sponsorblock_mark" in options
-        and "sponsorblock_remove" in options
+        and "skip_playlist_after_errors" in options
+        and "retries" in options
+        and "file_access_retries" in options
+        and "fragment_retries" in options
         and "extractor_retries" in options
         and "limit_rate" in options
-        and "windows_filenames" in options
     ), "Missing required options"
-    audio = options["audio"]
-    video = options["video"]
-    subtitles = options["subtitles"]
+    video_resolution = options["video_resolution"]
+    audio_language = options["audio_language"]
+    sub_langs = options["sub_langs"]
+    extract_audio = options["extract_audio"]
+    playlist = options["playlist"]
+    sponsorblock_mark = options["sponsorblock_mark"]
+    sponsorblock_remove = options["sponsorblock_remove"]
     ignore_errors = options["ignore_errors"]
     abort_on_error = options["abort_on_error"]
     use_extractors = options["use_extractors"]
     flat_playlist = options["flat_playlist"]
-    live_from_start = options["live_from_start"]
-    wait_for_video = options["wait_for_video"]
-    mark_watched = options["mark_watched"]
-    js_runtimes = options["js_runtimes"]
     proxy = options["proxy"]
     socket_timeout = options["socket_timeout"]
     source_address = options["source_address"]
@@ -191,7 +189,6 @@ def options_parser(options: VidraOptions) -> List[str]:
     audio_multistreams = options["audio_multistreams"]
     merge_output_format = options["merge_output_format"]
     audio_format = options["audio_format"]
-    extract_audio = options["extract_audio"]
     audio_quality = options["audio_quality"]
     remux_video = options["remux_video"]
     embed_subs = options["embed_subs"]
@@ -207,28 +204,28 @@ def options_parser(options: VidraOptions) -> List[str]:
     write_subs = options["write_subs"]
     write_auto_subs = options["write_auto_subs"]
     sub_format = options["sub_format"]
-    sub_langs = options["sub_langs"]
     output = options["output"]
     paths = options["paths"]
     download_archive = options["download_archive"]
-    playlist = options["playlist"]
     playlist_items = options["playlist_items"]
     concurrent_fragments = options["concurrent_fragments"]
     break_on_existing = options["break_on_existing"]
-    skip_playlist_after_errors = options["skip_playlist_after_errors"]
-    retries = options["retries"]
-    file_access_retries = options["file_access_retries"]
-    fragment_retries = options["fragment_retries"]
+    windows_filenames = options["windows_filenames"]
+    live_from_start = options["live_from_start"]
+    wait_for_video = options["wait_for_video"]
+    mark_watched = options["mark_watched"]
+    js_runtimes = options["js_runtimes"]
     abort_on_unavailable_fragments = options["abort_on_unavailable_fragments"]
     keep_fragments = options["keep_fragments"]
     batch_file = options["batch_file"]
     force_overwrites = options["force_overwrites"]
     write_thumbnail = options["write_thumbnail"]
-    sponsorblock_mark = options["sponsorblock_mark"]
-    sponsorblock_remove = options["sponsorblock_remove"]
+    skip_playlist_after_errors = options["skip_playlist_after_errors"]
+    retries = options["retries"]
+    file_access_retries = options["file_access_retries"]
+    fragment_retries = options["fragment_retries"]
     extractor_retries = options["extractor_retries"]
     limit_rate = options["limit_rate"]
-    windows_filenames = options["windows_filenames"]
 
     comando = ["./yt-dlp"]
     # format = [["bestvideo", "bestaudio"],["bestvideo"]] -> bestvideo+bestaudio/bestvideo
@@ -247,32 +244,41 @@ def options_parser(options: VidraOptions) -> List[str]:
     format = [f.split("+") for f in format.split("/") if f.strip()]
     format = format if format else cast(List[List[str]], [])
 
-    def parse_video(video: str):
-        if video == "bestvideo":
+    def parse_video_resolution(video: str):
+        if video == "bestvideo" or video == "default":
             return "bestvideo"
         return f"bestvideo[height<={video}]"
 
-    def parse_audio(audio: str):
-        if audio == "bestaudio":
+    def parse_audio_language(audio: str, lazy=False):
+        if audio == "bestaudio" or audio == "default":
             return "bestaudio"
-        return f"bestaudio[language^={audio}]"
-
-    if video != "default":
-        format.insert(
-            0, [parse_audio(audio) if audio else "bestaudio", parse_video(video)]
+        return (
+            f"bestaudio[language^={audio}]"
+            if not lazy
+            else f"bestaudio[language*={audio}]"
         )
-    elif audio != "default":
-        format.insert(0, [parse_audio(audio)])
-    format.append(["bestvideo", "bestaudio"])
 
-    if subtitles == "default":
-        pass
-    elif subtitles == "all":
-        sub_langs.insert(0, "all")
-    elif subtitles == "none":
-        sub_langs = []
-    else:
-        sub_langs.insert(0, subtitles)
+    if video_resolution != "default" or audio_language != "default":
+        new_format = [
+            [
+                parse_audio_language(audio_language),
+                parse_video_resolution(video_resolution),
+            ],
+            [
+                parse_audio_language(audio_language, lazy=True),
+                parse_video_resolution(video_resolution),
+            ],
+            [
+                "bestaudio",
+                parse_video_resolution(video_resolution),
+            ],
+            [
+                parse_audio_language(audio_language),
+                "bestvideo",
+            ],
+        ]
+        format = new_format + format
+    format += [["bestvideo", "bestaudio"], ["best"]]
 
     if extract_audio:
         format = [["bestaudio"], ["best"]]
@@ -281,6 +287,21 @@ def options_parser(options: VidraOptions) -> List[str]:
         write_subs = False
         write_auto_subs = False
     # General Options
+    if sub_langs:
+        comando.extend(["--sub-langs", ",".join(sub_langs)])
+    if playlist:
+        comando.append("--yes-playlist")
+    else:
+        comando.append("--no-playlist")
+    # SponsorBlock Options
+    if sponsorblock_mark:
+        adds = [str(item) for item in sponsorblock_mark if item]
+        if adds:
+            comando.extend(["--sponsorblock-mark", ",".join(adds)])
+    if sponsorblock_remove:
+        removals = [str(item) for item in sponsorblock_remove if item]
+        if removals:
+            comando.extend(["--sponsorblock-remove", ",".join(removals)])
     if ignore_errors:
         comando.append("--ignore-errors")
     if abort_on_error:
@@ -335,10 +356,6 @@ def options_parser(options: VidraOptions) -> List[str]:
     elif isinstance(playlist_items, list):
         items_str = ",".join(map(str, playlist_items))
         comando.extend(["--playlist-items", items_str])
-    if playlist:
-        comando.append("--yes-playlist")
-    else:
-        comando.append("--no-playlist")
     if download_archive:
         comando.extend(["--download-archive", download_archive])
     if break_on_existing:
@@ -423,10 +440,8 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.append("--write-auto-subs")
     else:
         comando.append("--no-write-auto-subs")
-    if sub_format:
-        comando.extend(["--sub-format", sub_format])
-    if sub_langs:
-        comando.extend(["--sub-langs", ",".join(sub_langs)])
+    if sub_format and (write_subs or write_auto_subs or sub_langs):
+        comando.extend(["--sub-format", f"{sub_format}/best"])
     # Authentication Options
     if username:
         comando.extend(["--username", username])
@@ -445,7 +460,7 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.extend(["--audio-quality", str(audio_quality)])
     if remux_video:
         comando.extend(["--remux-video", remux_video])
-    if embed_subs:
+    if embed_subs and (write_subs or write_auto_subs or sub_langs):
         comando.append("--embed-subs")
     if embed_thumbnail:
         comando.append("--embed-thumbnail")
@@ -463,15 +478,6 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.extend(["--ffmpeg-location", ffmpeg_location])
     if convert_thumbnails:
         comando.extend(["--convert-thumbnails", convert_thumbnails])
-    # SponsorBlock Options
-    if sponsorblock_mark:
-        adds = [str(item) for item in sponsorblock_mark if item]
-        if adds:
-            comando.extend(["--sponsorblock-mark", ",".join(adds)])
-    if sponsorblock_remove:
-        removals = [str(item) for item in sponsorblock_remove if item]
-        if removals:
-            comando.extend(["--sponsorblock-remove", ",".join(removals)])
     # Extractor Options
     if extractor_retries is not None:
         comando.extend(["--extractor-retries", str(extractor_retries)])

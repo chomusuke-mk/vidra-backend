@@ -52,6 +52,9 @@ class Descarga:
         self.cancel_requested = False
         self.pause_requested = False
 
+        # controles
+        self._download_in_progress = False
+
     def set_selected_entries(self, entries: List[str]):
         if self.state.get("value") != "wait_for_selection":
             raise ValueError(
@@ -183,6 +186,13 @@ class Descarga:
         self.delta_manager.update_info(self.id, sub_id, info)
 
     def iniciar_descarga(self):
+        if self._download_in_progress:
+            if self.logger:
+                self.logger.warning(
+                    f"Descarga {self.id} ya esta en progreso, ignorando solicitud de inicio"
+                )
+            return
+        self._download_in_progress = True
         self._init_logger()
         assert self.logger is not None, "Logger no inicializado"
         for path in self.options.get("paths", {}).values():
@@ -214,16 +224,21 @@ class Descarga:
         except DownloadCancelled:
             self._cancelar_descarga()
         except Exception as e:
-            self._set_state({**self.state, "value": "failed"}, None)
+            self._set_state(
+                {**self.state, "value": "failed", "sub_state": str(e)[:100]}, None
+            )
             self.logger.error(f"Error al descargar {self.info['url']}: {e}")
             self.logger.error(traceback.format_exc())
         finally:
             self._close_logger()
+            self._download_in_progress = False
 
     def pausar_descarga(self):
         self.pause_requested = True
         # Desbloquea la espera de selección si es necesario
         self.select_entries_event.set()
+        if not self._download_in_progress:
+            self._pausar_descarga()
 
     def _pausar_descarga(self):
         if self.state["value"] in ["wait_for_selection", "identifying"]:

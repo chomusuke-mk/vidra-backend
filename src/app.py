@@ -38,12 +38,17 @@ class App:
         self._init_db()
         self._load_state()
 
+        for d in self.descargas:
+            if d.state["value"] in ["identifying", "wait_for_selection", "in_progress"]:
+                d.pausar_descarga()
+
         # Iniciar el Hilo Guardian (escucha deltas y persiste cambios)
         self._db_thread = Thread(target=self._background_save, daemon=True)
         self._db_thread.start()
 
         # Forzar guardado si se cierra la aplicación
-        atexit.register(self._save_state)
+        self._shutdown_called = False
+        atexit.register(self.shutdown)
 
         self.logger.info("Aplicación iniciada con Gestor Persistente SQLite")
 
@@ -313,7 +318,7 @@ class App:
             except Exception as e:
                 self.logger.error(f"Error al sincronizar con SQLite: {e}")
 
-    def get_logs(self, id: Optional[str] = None, limit: int = 100) -> str:
+    def get_logs(self, id: Optional[str] = None, limit: int = 300) -> str:
         if id is not None:
             descarga = next((d for d in self.descargas if d.id == id), None)
             if descarga is not None:
@@ -341,7 +346,7 @@ class App:
                     "state": d.state,
                 }
                 response.append(info)
-            return response
+            return response[::-1]  # mostrar primero las descargas mas recientes
         else:
             # datos de una elemento + descargas hijas
             element = next((d for d in descargas_snapshot if d.id == id), None)
@@ -360,7 +365,7 @@ class App:
                         "state": sd.state,
                     }
                     for sd in element.sub_descargas
-                ],
+                ][::-1],  # mostrar primero las sub-descargas mas recientes
             }
 
     def add_download(self, url: str, options: Dict):
@@ -419,17 +424,18 @@ class App:
     def subscribe_to_deltas(self, id: Optional[str], everything: bool):
         return self.delta_manager.subscribe(id=id, everything=everything)
 
+
     def shutdown(self):
         """Detiene el hilo guardián de forma segura."""
+        if self._shutdown_called:
+            return
+        self._shutdown_called = True
+        print("Gracefully shutting down...\n\n")
         self._stop_event.set()
         for d in self.descargas:
-            if d.state["value"] not in [
-                "requested",
-                "pending",
-                "identifying",
-                "wait_for_selection",
-            ]:
+            if d.state["value"] in ["identifying", "wait_for_selection", "in_progress"]:
                 d.pausar_descarga()
         if self._db_thread.is_alive():
             self._db_thread.join()
+        self._save_state()
         close_logger(self.logger)

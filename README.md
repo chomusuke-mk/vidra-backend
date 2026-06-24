@@ -67,11 +67,11 @@ El proyecto es altamente configurable a través de variables de entorno, lo que 
    python src/main.py
    ```
 
-   _(En producción, la API levantará Waitress en 2 hilos y exigirá el `API_TOKEN` en las cabeceras)._
+   _(En producción, la API levantará Waitress en 16 hilos y exigirá el `API_TOKEN` en las cabeceras)._
 
 ## 📖 Referencia de la API
 
-_Nota: Todos los endpoints (excepto `/` y `/favicon.ico`) requieren autenticación cuando `APP_ENV=production`. Debes enviar el token en la cabecera HTTP:_
+_Nota: Todos los endpoints requieren autenticación cuando `APP_ENV=production`. Debes enviar el token en la cabecera HTTP:_
 `Authorization: Bearer SUPER_SECRET_TOKEN`
 
 ### 1. Health Check
@@ -85,7 +85,14 @@ Comprueba si la API está funcionando.
   { "status": "ok" }
   ```
 
-### 2. Añadir Descarga
+### 2. Shut down the server
+
+Apaga el servidor.
+
+- **POST** `/shutdown`
+- **Respuesta Exitosa:** `200 OK`
+
+### 3. Añadir Descarga
 
 Inicia una nueva descarga.
 
@@ -108,21 +115,21 @@ Inicia una nueva descarga.
   }
   ```
 
-### 3. Obtener Información de la Descarga
+### 4. Obtener Información de la Descarga
 
 Obtiene el estado o metadatos de una descarga específica.
 
 - **GET** `/downloads?id={download_id}`
 - **Respuesta Exitosa:** `200 OK` (Retorna un objeto JSON con los detalles).
 
-### 4. Consultar Logs
+### 5. Consultar Logs
 
 Obtiene los logs de texto plano de una descarga.
 
 - **GET** `/logs?id={download_id}`
 - **Respuesta Exitosa:** `200 OK` (Content-Type: `text/plain`).
 
-### 5. Seleccionar Entradas (Playlists)
+### 6. Seleccionar Entradas (Playlists)
 
 Si la URL pertenece a una lista de reproducción y requiere selección de elementos.
 
@@ -138,14 +145,14 @@ Si la URL pertenece a una lista de reproducción y requiere selección de elemen
     }
     ```
 
-### 6. Suscribirse a Actualizaciones (SSE)
+### 7. Suscribirse a Actualizaciones (SSE)
 
 Abre una conexión persistente (Server-Sent Events) para recibir el progreso en tiempo real.
 
 - **GET** `/subscribe?id={download_id}&everything=false`
 - **Respuesta Exitosa:** `200 OK` (Content-Type: `text/event-stream`).
 
-### 7. Control de Descarga (En desarrollo)
+### 8. Control de Descarga (En desarrollo)
 
 Permite pausar, reanudar, cancelar o reintentar una descarga. _(Actualmente no implementado - 501)._
 
