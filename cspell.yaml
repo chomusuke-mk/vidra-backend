@@ -4,6 +4,7 @@ words:
   - bestvideo
   - cffi
   - chomusuke
+  - compileall
   - deno
   - descomentar
   - desuscribir
@@ -17,6 +18,7 @@ words:
   - offtopic
   - patreon
   - phantomjs
+  - pycache
   - quickjs
   - REDIRECCIÓN
   - Reintentando
