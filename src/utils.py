@@ -154,3 +154,20 @@ def bytes_to_human_readable(num_bytes: Optional[int | float], suffix: str = "") 
 
     # Si el archivo es ridículamente grande (más de 1024 PB), se queda en PB
     return f"{num_bytes:.0f}PB{suffix}"
+
+def seconds_to_human_readable(seconds: Optional[int | float]) -> str:
+    if seconds is None:
+        return "--"
+
+    # Convertir a enteros
+    seconds = int(seconds)
+
+    # Calcular horas, minutos y segundos
+    horas, remainder = divmod(seconds, 3600)
+    minutos, segundos = divmod(remainder, 60)
+
+    # Formatear la cadena de salida
+    if horas > 0:
+        return f"{horas}:{minutos:02d}:{segundos:02d}"
+    else:
+        return f"{minutos}:{segundos:02d}"

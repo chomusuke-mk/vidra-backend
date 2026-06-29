@@ -361,8 +361,8 @@ def options_parser(options: VidraOptions) -> List[str]:
         # Por defecto yt-dlp descarga toda la playlist.
         pass
     elif isinstance(playlist_ids, list):
-        ids_str = " or ".join([f"id=='{id_}'" for id_ in playlist_ids])
-        comando.extend(["--match-filter", ids_str])
+        for id_ in playlist_ids:
+            comando.extend(["--match-filters", f"id='{id_}'"])
     if download_archive:
         comando.extend(["--download-archive", download_archive])
     if break_on_existing:

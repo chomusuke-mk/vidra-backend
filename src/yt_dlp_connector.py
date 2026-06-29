@@ -15,7 +15,13 @@ from typing import (
 )
 from logging import Logger
 import time
-from utils import to_int, to_float, bytes_to_human_readable, get_logs_messages
+from utils import (
+    to_int,
+    to_float,
+    bytes_to_human_readable,
+    get_logs_messages,
+    seconds_to_human_readable,
+)
 from threading import Lock, Event
 from yt_dlp_parser import options_parser
 from yt_dlp_parser_types import VidraOptions
@@ -194,9 +200,7 @@ class YTDLPConnector:
                 and d.get("duration")
                 and isinstance(d["duration"], (int, float))
             ):
-                self.info[sub_id]["duration"] = time.strftime(
-                    "%H:%M:%S", time.gmtime(d["duration"])
-                )
+                self.info[sub_id]["duration"] = seconds_to_human_readable(d["duration"])
                 any_change = True
             if any_change and emit:
                 self.emit_info(sub_id)
