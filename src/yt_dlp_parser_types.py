@@ -429,6 +429,8 @@ class VidraOptions(TypedDict):
     ignore_errors: NotRequired[bool]
     # Detiene el proceso de descarga si ocurre un error.
     abort_on_error: NotRequired[bool]
+    # Imprime detalles de la descarga
+    quiet: NotRequired[bool]
     # Nombres de extractores a usar (separados por coma).("all","default",expresión regular)
     use_extractors: NotRequired[List[str]]
     # Lista los videos de una playlist sin descargarlos.
@@ -531,9 +533,8 @@ class VidraOptions(TypedDict):
     ]
     # Ruta de archivo donde registrar los IDs descargados, para evitar duplicados.
     download_archive: NotRequired[Union[Literal[False], str]]
-    # Especifica qué videos de la playlist descargar (índices o rangos).
-    # Ejemplo: "1:3,5,7" descarga los ítems 1,2,3,5 y 7.
-    playlist_items: NotRequired[Union[List[Union[int, str]], Literal["all"]]]
+    # Ids de videos a descargar de la playlist
+    playlist_ids: NotRequired[List[str] | Literal["ALL_ITEMS"]]
     # Fragmentos simultáneos a descargar (por defecto 1).
     concurrent_fragments: NotRequired[int]
     # Detiene la descarga si se encuentra un archivo ya existente.
@@ -633,6 +634,10 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "abort_on_error":
+            if not isinstance(value, bool):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "quiet":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -826,9 +831,13 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not (isinstance(value, str) or value is False):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "playlist_items":
+        elif key == "playlist_ids":
             if not (
-                isinstance(value, list) or (isinstance(value, str) and value == "all")
+                value == "ALL_ITEMS"
+                or (
+                    isinstance(value, list)
+                    and all(isinstance(item, str) for item in value)
+                )
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False

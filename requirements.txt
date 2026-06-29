@@ -11,6 +11,7 @@ secretstorage
 
 flask
 waitress
+tldextract
 
 yt-dlp
 yt-dlp-ejs

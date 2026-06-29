@@ -1,4 +1,5 @@
-from typing import TypedDict, Literal, Optional, NotRequired
+from typing import TypedDict, Literal, Optional, NotRequired, Any
+import logging
 
 
 type Color = Literal["green", "yellow", "red", "blue", "gray"]
@@ -10,6 +11,47 @@ class DownloadCancelled(Exception):
 
 class DownloadPaused(Exception):
     """Excepción personalizada para indicar que la descarga ha sido pausada"""
+
+class YTDLPLoggerAdapter:
+    """
+    Clase que envuelve un logging.Logger estándar para que cumpla
+    estrictamente con la interfaz _LoggerProtocol de yt-dlp.
+    """
+
+    def __init__(
+        self, ydl: Optional[Any] = None, logger: Optional[logging.Logger] = None
+    ) -> None:
+        self.logger = logger
+
+    def debug(self, message: str) -> None:
+        if not self.logger:
+            return
+        self.logger.debug(message)
+
+    def info(self, message: str) -> None:
+        if not self.logger:
+            return
+        if message.startswith("[debug]"):
+            return
+        self.logger.info(message)
+
+    def warning(
+        self, message: str, *, once: bool = False, only_once: bool = False
+    ) -> None:
+        if not self.logger:
+            return
+        self.logger.warning(message)
+
+    def error(self, message: str) -> None:
+        if not self.logger:
+            return
+        self.logger.error(message)
+
+    def stdout(self, message: str) -> None:
+        pass
+
+    def stderr(self, message: str) -> None:
+        pass
 
 
 class State(TypedDict):

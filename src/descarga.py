@@ -23,10 +23,14 @@ class Descarga:
         sub_descargas: List[Dict],
         logs_path: str,
         temp_path: str,
+        ffmpeg_path: str,
+        quickjs_path: str,
         delta_manager: DeltaManager,
     ):
         # Archivos temporales de descarga en temp/{id}/
         options.setdefault("paths", {})["temp"] = os.path.join(temp_path, id)
+        options["ffmpeg_location"] = ffmpeg_path
+        options.setdefault("js_runtimes", {})["quickjs"] = quickjs_path
         self.id = id
         self.info = info
         self.state = state
@@ -95,16 +99,15 @@ class Descarga:
             self.logger = None
             self.log_stream = None
 
-    def get_logs(self, limit: int = 100) -> str:
+    def get_logs(self) -> str:
         if self.log_stream is not None:
-            logs = self.log_stream.getvalue()
-            return "\n".join(logs.split("\n")[-limit:][::-1]).strip() if logs else ""
+            return self.log_stream.getvalue()
         if not os.path.exists(self.log_file):
             return ""
         with open(self.log_file, "r", encoding="utf-8") as f:
             logs = f.read()
             f.close()
-            return "\n".join(logs.split("\n")[-limit:][::-1]).strip() if logs else ""
+            return logs
 
     def to_dict(self):
         return {
@@ -117,7 +120,12 @@ class Descarga:
 
     @staticmethod
     def from_dict(
-        data: Dict, logs_path: str, temp_path: str, delta_manager: DeltaManager
+        data: Dict,
+        logs_path: str,
+        temp_path: str,
+        ffmpeg_path: str,
+        quickjs_path: str,
+        delta_manager: DeltaManager,
     ):
         return Descarga(
             id=data["id"],
@@ -127,6 +135,8 @@ class Descarga:
             sub_descargas=data["sub_descargas"],
             logs_path=logs_path,
             temp_path=temp_path,
+            ffmpeg_path=ffmpeg_path,
+            quickjs_path=quickjs_path,
             delta_manager=delta_manager,
         )
 
@@ -197,9 +207,6 @@ class Descarga:
         assert self.logger is not None, "Logger no inicializado"
         for path in self.options.get("paths", {}).values():
             os.makedirs(path, exist_ok=True)
-        self.logger.info(
-            f"Iniciando descarga de {self.info['url']} con opciones {self.options}"
-        )
         ytdlp_connector = YTDLPConnector(
             id=self.id,
             options=self.options,
@@ -213,7 +220,7 @@ class Descarga:
             sub_descargas=[d.to_dict() for d in self.sub_descargas],
             select_entries_event=self.select_entries_event,
             handle_requests=self.handle_requests,
-            get_logs=lambda: self.get_logs(0),
+            get_logs=self.get_logs,
         )
         try:
             self.select_entries_event.clear()

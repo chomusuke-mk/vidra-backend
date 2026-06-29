@@ -1,215 +1,261 @@
-from flask import Flask, jsonify, request, Response
-from functools import wraps
-import certifi
+import sys
 import os
-import threading
-import _thread
-from app import App
+import traceback
 
-# --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
-ENV = os.environ.get("APP_ENV", "development")
-API_TOKEN = os.environ.get("API_TOKEN", "SUPER_SECRET_TOKEN")
-LOGS_PATH = os.path.abspath(os.environ.get("LOGS_PATH", "./temp/logs"))
-DATA_PATH = os.path.abspath(os.environ.get("DATA_PATH", "./temp/data"))
-TEMP_PATH = os.path.abspath(os.environ.get("TEMP_PATH", "./temp/temp"))
-
-HOST = os.environ.get("HOST", "0.0.0.0")
-PORT = int(os.environ.get("PORT", 5000))
-
-XDG_CONFIG_HOME = os.path.join(DATA_PATH, "yt-dlp")
-XDG_CACHE_HOME = os.path.join(TEMP_PATH, "yt-dlp")
-
-os.makedirs(XDG_CONFIG_HOME, exist_ok=True)
-os.makedirs(XDG_CACHE_HOME, exist_ok=True)
-
-# --- CONFIGURACIÓN DE CERTIFICADOS Y RUTAS ---
-cert_path = certifi.where()
-os.environ["SSL_CERT_FILE"] = cert_path
-os.environ["REQUESTS_CA_BUNDLE"] = cert_path
-os.environ["XDG_CONFIG_HOME"] = os.path.join(DATA_PATH, "yt-dlp")
-os.environ["XDG_CACHE_HOME"] = os.path.join(TEMP_PATH, "yt-dlp")
-
-# --- INICIALIZACIÓN DEL SERVIDOR Y APLICACIÓN ---
-server = Flask(__name__)
-
-# 2. CONFIGURAR FLASK
-if ENV == "production":
-    server.config["DEBUG"] = False
-    server.config["TESTING"] = False
-    server.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
-
-app = App(logs_path=LOGS_PATH, data_path=DATA_PATH, temp_path=TEMP_PATH)
+# =============================================================================
+# 0. REDIRECCIÓN TEMPRANA DE LOGS (SISTEMA DE CAJA NEGRA)
+# =============================================================================
+# Capturamos la variable antes que nada para atrapar errores de importación
+SERVER_LOGS_FILE_PATH = os.path.abspath(
+    os.environ.get("SERVER_LOGS_FILE_PATH", "./temp/logs/server.log")
+)
+os.makedirs(os.path.dirname(SERVER_LOGS_FILE_PATH), exist_ok=True)
 
 
-# --- SEGURIDAD ---
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if "Authorization" in request.headers:
-            auth_header = request.headers["Authorization"]
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
-        if ENV == "production" and (not token or token != API_TOKEN):
-            return jsonify({"error": "Invalid or missing API token"}), 401
-        return f(*args, **kwargs)
+class LoggerWriter:
+    def __init__(self, filename):
+        # Usamos append ("a") para no borrar el historial si se reinicia rápido
+        self.file = open(filename, "a", encoding="utf-8")
 
-    return decorated
+    def write(self, message):
+        self.file.write(message)
+        self.file.flush()  # Forzamos la escritura inmediata en disco
 
+    def flush(self):
+        self.file.flush()
 
-# --- RUTAS ---
-@server.route("/", methods=["GET"])
-@token_required
-def health_check():
-    return jsonify({"status": "ok"})
-
-@server.route("/shutdown", methods=["POST"])
-@token_required
-def shutdown():
-    try:
-        # Llamamos al apagado síncrono de tu aplicación para guardar BD
-        app.shutdown()
-
-        def kill_server():
-            # En lugar de matar todo el contenedor del OS con os._exit(0),
-            # le enviamos una interrupción suave al hilo principal de Python.
-            # Esto hará que Waitress cierre los puertos y la ejecución termine pacíficamente,
-            # dejando a Flutter vivo y coleando.
-            # NO TOCAR: ESTE HACK PERMITE REINICIAR SERIOUS_PYTHON EN CALIENTE
-            _thread.interrupt_main()
-
-        # Damos medio segundo para que Flask alcance a devolver la respuesta HTTP 200 a Flutter
-        threading.Timer(0.5, kill_server).start()
-
-        return jsonify({"message": "Shutting down..."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    def close(self):
+        self.file.close()
 
 
-@server.route("/favicon.ico")
-@token_required
-def favicon():
-    svg_content = """
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" fill="black"/>
-        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="70" font-weight="bold">V</text>
-    </svg>
-    """
-    return Response(svg_content, mimetype="image/svg+xml")
+# Redirigimos la salida estándar (print) y la de errores (excepciones/Tracebacks)
+sys.stdout = LoggerWriter(SERVER_LOGS_FILE_PATH)
+sys.stderr = sys.stdout
 
+# =============================================================================
+# 1. EJECUCIÓN PRINCIPAL ENVUELTA EN TRY-EXCEPT
+# =============================================================================
+try:
+    print("\n" + "=" * 50)
+    print("Iniciando entorno Python (Caja Negra activada)...")
+    print("=" * 50)
+    from flask import Flask, jsonify, request, Response
+    from functools import wraps
+    import certifi
+    import os
+    import threading
+    import _thread
+    from app import App
 
-@server.route("/logs", methods=["GET"])
-@token_required
-def get_logs():
-    download_id = request.args.get("id")
-    limit = request.args.get("limit", default=300, type=int)
-    try:
-        logs = app.get_logs(id=download_id, limit=limit)
-        return Response(logs, mimetype="text/plain")
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception:
-        return jsonify({"error": "An unexpected error occurred"}), 500
+    # --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
+    ENV = os.environ.get("APP_ENV", "development")
+    API_TOKEN = os.environ.get("API_TOKEN", "SUPER_SECRET_TOKEN")
+    LOGS_PATH = os.path.abspath(os.environ.get("LOGS_PATH", "./temp/logs"))
+    DATA_PATH = os.path.abspath(os.environ.get("DATA_PATH", "./temp/data"))
+    TEMP_PATH = os.path.abspath(os.environ.get("TEMP_PATH", "./temp/temp"))
+    FFMPEG_PATH = os.path.abspath(os.environ.get("FFMPEG_PATH", "./temp/ffmpeg"))
+    QUICKJS_PATH = os.path.abspath(os.environ.get("QUICKJS_PATH", "./temp/quickjs"))
 
+    HOST = os.environ.get("HOST", "0.0.0.0")
+    PORT = int(os.environ.get("PORT", 5000))
 
-@server.route("/downloads", methods=["GET"])
-@token_required
-def get_info():
-    download_id = request.args.get("id")
-    try:
-        info = app.get_downloads(id=download_id)
-        return jsonify(info)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception:
-        return jsonify({"error": "An unexpected error occurred"}), 500
+    # --- CONFIGURACIÓN DE CERTIFICADOS Y RUTAS ---
+    cert_path = certifi.where()
+    os.environ["SSL_CERT_FILE"] = cert_path
+    os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+    os.environ.setdefault("XDG_CONFIG_HOME", os.path.join(DATA_PATH, "yt-dlp"))
+    os.environ.setdefault("XDG_CACHE_HOME", os.path.join(TEMP_PATH, "yt-dlp"))
+    os.makedirs(os.environ["XDG_CONFIG_HOME"], exist_ok=True)
+    os.makedirs(os.environ["XDG_CACHE_HOME"], exist_ok=True)
 
+    # --- INICIALIZACIÓN DEL SERVIDOR Y APLICACIÓN ---
+    server = Flask(__name__)
 
-@server.route("/downloads", methods=["POST"])
-@token_required
-def add_download():
-    data = request.get_json()
-    url = data.get("url", "")
-    options = data.get("options", {})
-    if not url:
-        return jsonify({"error": "URL is required"}), 400
-    download_id = app.add_download(url=url, options=options)
-    return jsonify({"message": "Download added successfully", "id": download_id}), 201
+    # 2. CONFIGURAR FLASK
+    if ENV == "production":
+        server.config["DEBUG"] = False
+        server.config["TESTING"] = False
+        server.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
+    app = App(
+        logs_path=LOGS_PATH,
+        data_path=DATA_PATH,
+        temp_path=TEMP_PATH,
+        ffmpeg_path=FFMPEG_PATH,
+        quickjs_path=QUICKJS_PATH,
+    )
 
-@server.route("/downloads", methods=["PATCH"])
-@token_required
-def update_downloads():
-    action = request.args.get("action")
-    download_id = request.args.get("id")
-    if not download_id:
-        return jsonify({"error": "ID is required"}), 400
-    if not action:
-        return jsonify({"error": "Action is required"}), 400
-    if action not in ["pause", "resume", "cancel", "retry"]:
+    # --- SEGURIDAD ---
+    def token_required(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token = None
+            if "Authorization" in request.headers:
+                auth_header = request.headers["Authorization"]
+                if auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ")[1]
+            if ENV == "production" and (not token or token != API_TOKEN):
+                return jsonify({"error": "Invalid or missing API token"}), 401
+            return f(*args, **kwargs)
+
+        return decorated
+
+    # --- RUTAS ---
+    @server.route("/", methods=["GET"])
+    @token_required
+    def health_check():
+        return jsonify({"status": "ok"})
+
+    @server.route("/shutdown", methods=["POST"])
+    @token_required
+    def shutdown():
+        try:
+            # Llamamos al apagado síncrono de tu aplicación para guardar BD
+            app.shutdown()
+
+            def kill_server():
+                # NO TOCAR: ESTE HACK PERMITE REINICIAR SERIOUS_PYTHON EN CALIENTE
+                _thread.interrupt_main()
+
+            # Damos medio segundo para que Flask alcance a devolver la respuesta HTTP 200 a Flutter
+            threading.Timer(0.5, kill_server).start()
+
+            return jsonify({"message": "Shutting down..."})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @server.route("/favicon.ico")
+    @token_required
+    def favicon():
+        svg_content = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <rect width="100" height="100" fill="black"/>
+            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="70" font-weight="bold">V</text>
+        </svg>
+        """
+        return Response(svg_content, mimetype="image/svg+xml")
+
+    @server.route("/logs", methods=["GET"])
+    @token_required
+    def get_logs():
+        download_id = request.args.get("id")
+        try:
+            logs = app.get_logs(id=download_id)
+            return Response(logs, mimetype="text/plain")
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            return jsonify({"error": "An unexpected error occurred"}), 500
+
+    @server.route("/downloads", methods=["GET"])
+    @token_required
+    def get_info():
+        download_id = request.args.get("id")
+        try:
+            info = app.get_downloads(id=download_id)
+            return jsonify(info)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            return jsonify({"error": "An unexpected error occurred"}), 500
+
+    @server.route("/downloads", methods=["POST"])
+    @token_required
+    def add_download():
+        data = request.get_json()
+        url = data.get("url", "")
+        options = data.get("options", {})
+        if not url:
+            return jsonify({"error": "URL is required"}), 400
+        download_id = app.add_download(url=url, options=options)
         return jsonify(
-            {
-                "error": "Invalid action, must be one of 'pause', 'resume', 'cancel' or 'retry'"
-            }
-        ), 400
-    # TODO: implement pause, resume, cancel and retry actions
-    return jsonify({"error": f"Action {action} not implemented yet"}), 501
+            {"message": "Download added successfully", "id": download_id}
+        ), 201
 
+    @server.route("/downloads", methods=["PATCH"])
+    @token_required
+    def update_downloads():
+        action = request.args.get("action")
+        download_id = request.args.get("id")
+        if not download_id:
+            return jsonify({"error": "ID is required"}), 400
+        if not action:
+            return jsonify({"error": "Action is required"}), 400
+        if action not in ["pause", "resume", "cancel", "retry"]:
+            return jsonify(
+                {
+                    "error": "Invalid action, must be one of 'pause', 'resume', 'cancel' or 'retry'"
+                }
+            ), 400
+        # TODO: implement pause, resume, cancel and retry actions
+        return jsonify({"error": f"Action {action} not implemented yet"}), 501
 
-@server.route("/select-entries", methods=["GET"])
-@token_required
-def get_entries_to_select():
-    download_id = request.args.get("id")
+    @server.route("/select-entries", methods=["GET"])
+    @token_required
+    def get_entries_to_select():
+        download_id = request.args.get("id")
 
-    if not download_id:
-        return jsonify({"error": "ID is required"}), 400
-    try:
-        entries = app.get_entries_to_select(id=download_id)
-        return jsonify({"entries": entries})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception:
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        if not download_id:
+            return jsonify({"error": "ID is required"}), 400
+        try:
+            entries = app.get_entries_to_select(id=download_id)
+            return jsonify({"entries": entries})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            return jsonify({"error": "An unexpected error occurred"}), 500
 
+    @server.route("/select-entries", methods=["POST"])
+    @token_required
+    def select_entries():
+        download_id = request.args.get("id")
+        entries = request.get_json().get("entries")
+        if not download_id or not entries:
+            return jsonify({"error": "ID and entries are required"}), 400
+        if not isinstance(entries, list) or not all(
+            isinstance(e, str) for e in entries
+        ):
+            return jsonify({"error": "Entries must be a list of strings(IDS)"}), 400
+        try:
+            app.select_entries(id=download_id, entries=entries)
+            return jsonify({"message": "Entries selected successfully"})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            return jsonify({"error": "An unexpected error occurred"}), 500
 
-@server.route("/select-entries", methods=["POST"])
-@token_required
-def select_entries():
-    download_id = request.args.get("id")
-    entries = request.get_json().get("entries")
-    if not download_id or not entries:
-        return jsonify({"error": "ID and entries are required"}), 400
-    if not isinstance(entries, list) or not all(isinstance(e, str) for e in entries):
-        return jsonify({"error": "Entries must be a list of strings(IDS)"}), 400
-    try:
-        app.select_entries(id=download_id, entries=entries)
-        return jsonify({"message": "Entries selected successfully"})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception:
-        return jsonify({"error": "An unexpected error occurred"}), 500
+    @server.route("/subscribe", methods=["GET"])
+    @token_required
+    def subscribe_to_deltas():
+        download_id = request.args.get("id")
+        everything = request.args.get("everything", "false").lower() == "true"
+        try:
+            return Response(
+                app.subscribe_to_deltas(id=download_id, everything=everything),
+                mimetype="text/event-stream",
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            return jsonify({"error": "An unexpected error occurred"}), 500
 
+    if ENV != "production":
+        server.run(debug=True, port=PORT, host=HOST)
+    else:
+        from waitress import serve
 
-@server.route("/subscribe", methods=["GET"])
-@token_required
-def subscribe_to_deltas():
-    download_id = request.args.get("id")
-    everything = request.args.get("everything", "false").lower() == "true"
-    try:
-        return Response(
-            app.subscribe_to_deltas(id=download_id, everything=everything),
-            mimetype="text/event-stream",
-        )
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception:
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        print(f"Iniciando Waitress en {HOST}:{PORT} con 16 hilos...")
+        serve(server, host=HOST, port=PORT, threads=16)
 
-
-if ENV != "production":
-    server.run(debug=True, port=PORT, host=HOST)
-else:
-    from waitress import serve
-
-    print(f"Iniciando Waitress en {HOST}:{PORT} con 16 hilos...")
-    serve(server, host=HOST, port=PORT, threads=16)
+except Exception:
+    # Si cualquier cosa falla (ej: módulo no encontrado), lo mandamos al archivo log antes de morir.
+    print("\n!!! ERROR FATAL DURANTE EL ARRANQUE DEL SERVIDOR !!!")
+    traceback.print_exc()
+finally:
+    print("\n" + "=" * 50)
+    print("Servidor Python finalizado.")
+    print("=" * 50)
+    sys.stderr = os.devnull
+    sys.stdout.close()
+    sys.stdout = os.devnull
+    _thread.interrupt_main()

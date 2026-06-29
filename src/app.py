@@ -9,11 +9,20 @@ from descarga import Descarga, DeltaManager, Descarga_Hija
 from yt_dlp_parser_types import is_valid_options
 
 class App:
-    def __init__(self, logs_path: str, data_path: str, temp_path: str):
+    def __init__(
+        self,
+        logs_path: str,
+        data_path: str,
+        temp_path: str,
+        ffmpeg_path: str,
+        quickjs_path: str,
+    ):
         # Config
         self.logs_path = logs_path
         self.data_path = data_path
         self.temp_path = temp_path
+        self.ffmpeg_path = ffmpeg_path
+        self.quickjs_path = quickjs_path
         os.makedirs(self.logs_path, exist_ok=True)
         os.makedirs(self.data_path, exist_ok=True)
         os.makedirs(self.temp_path, exist_ok=True)
@@ -108,6 +117,8 @@ class App:
                     sub_descargas=sub_descargas_list,
                     logs_path=self.logs_path,
                     temp_path=self.temp_path,
+                    ffmpeg_path=self.ffmpeg_path,
+                    quickjs_path=self.quickjs_path,
                     delta_manager=self.delta_manager,
                 )
                 if descarga.state["value"] != "deleted":
@@ -318,15 +329,17 @@ class App:
             except Exception as e:
                 self.logger.error(f"Error al sincronizar con SQLite: {e}")
 
-    def get_logs(self, id: Optional[str] = None, limit: int = 300) -> str:
+    def get_logs(self, id: Optional[str] = None) -> str:
+        logs = ""
         if id is not None:
             descarga = next((d for d in self.descargas if d.id == id), None)
             if descarga is not None:
-                return descarga.get_logs(limit=limit)
+                logs = descarga.get_logs()
             else:
                 raise ValueError("Descarga no encontrada")
-        logs = self.log_stream.getvalue()
-        return "\n".join(logs.split("\n")[-limit:][::-1]).strip() if logs else ""
+        else:
+            logs = self.log_stream.getvalue()
+        return "---TRUNCATED---\n" + logs[-50000:] if len(logs) > 50000 else logs
 
     def get_downloads(
         self,
@@ -389,6 +402,8 @@ class App:
             options=options,
             logs_path=self.logs_path,
             temp_path=self.temp_path,
+            ffmpeg_path=self.ffmpeg_path,
+            quickjs_path=self.quickjs_path,
             state={
                 "value": "pending",
             },

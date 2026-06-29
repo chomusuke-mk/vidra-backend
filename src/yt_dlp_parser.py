@@ -19,6 +19,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "sponsorblock_remove": [],
     "ignore_errors": False,  # True=Ignorar errores, no lanzar excepción
     "abort_on_error": False,  # False=Si se lanza excepción, esta es ignorada
+    "quiet": True,  # True=No imprimir detalles de la descarga
     "use_extractors": ["all"],
     "flat_playlist": False,
     "proxy": "",
@@ -60,7 +61,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "output": ["title", "-", "id", ".", "ext"],
     "paths": {},
     "download_archive": False,
-    "playlist_items": "all",
+    "playlist_ids": "ALL_ITEMS",
     "concurrent_fragments": 1,
     "break_on_existing": False,
     "windows_filenames": True,
@@ -96,6 +97,7 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "sponsorblock_remove" in options
         and "ignore_errors" in options
         and "abort_on_error" in options
+        and "quiet" in options
         and "use_extractors" in options
         and "flat_playlist" in options
         and "proxy" in options
@@ -137,7 +139,7 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "output" in options
         and "paths" in options
         and "download_archive" in options
-        and "playlist_items" in options
+        and "playlist_ids" in options
         and "concurrent_fragments" in options
         and "break_on_existing" in options
         and "windows_filenames" in options
@@ -166,6 +168,7 @@ def options_parser(options: VidraOptions) -> List[str]:
     sponsorblock_remove = options["sponsorblock_remove"]
     ignore_errors = options["ignore_errors"]
     abort_on_error = options["abort_on_error"]
+    quiet = options["quiet"]
     use_extractors = options["use_extractors"]
     flat_playlist = options["flat_playlist"]
     proxy = options["proxy"]
@@ -207,7 +210,7 @@ def options_parser(options: VidraOptions) -> List[str]:
     output = options["output"]
     paths = options["paths"]
     download_archive = options["download_archive"]
-    playlist_items = options["playlist_items"]
+    playlist_ids = options["playlist_ids"]
     concurrent_fragments = options["concurrent_fragments"]
     break_on_existing = options["break_on_existing"]
     windows_filenames = options["windows_filenames"]
@@ -308,6 +311,10 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.append("--abort-on-error")
     else:
         comando.append("--no-abort-on-error")
+    if quiet:
+        comando.append("--quiet")
+    else:
+        comando.append("--no-quiet")
     if use_extractors:
         comando.extend(["--use-extractors", ",".join(use_extractors)])
     if flat_playlist:
@@ -350,12 +357,12 @@ def options_parser(options: VidraOptions) -> List[str]:
     if xff:
         comando.extend(["--xff", xff])
     # Video Selection
-    if playlist_items == "all":
+    if playlist_ids == "ALL_ITEMS":
         # Por defecto yt-dlp descarga toda la playlist.
         pass
-    elif isinstance(playlist_items, list):
-        items_str = ",".join(map(str, playlist_items))
-        comando.extend(["--playlist-items", items_str])
+    elif isinstance(playlist_ids, list):
+        ids_str = " or ".join([f"id=='{id_}'" for id_ in playlist_ids])
+        comando.extend(["--match-filter", ids_str])
     if download_archive:
         comando.extend(["--download-archive", download_archive])
     if break_on_existing:

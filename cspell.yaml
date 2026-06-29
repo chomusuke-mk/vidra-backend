@@ -7,6 +7,7 @@ words:
   - deno
   - descomentar
   - desuscribir
+  - distribucion
   - executemany
   - getpid
   - gmtime
@@ -17,11 +18,13 @@ words:
   - patreon
   - phantomjs
   - quickjs
+  - REDIRECCIÓN
   - Reintentando
   - Sanitizar
   - selfpromo
   - síncrono
   - sponsorblock
+  - tldextract
   - twofactor
   - venv
   - vidra
