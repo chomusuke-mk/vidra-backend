@@ -63,8 +63,13 @@ try:
     cert_path = certifi.where()
     os.environ["SSL_CERT_FILE"] = cert_path
     os.environ["REQUESTS_CA_BUNDLE"] = cert_path
-    os.environ.setdefault("XDG_CONFIG_HOME", os.path.join(DATA_PATH, "yt-dlp"))
-    os.environ.setdefault("XDG_CACHE_HOME", os.path.join(TEMP_PATH, "yt-dlp"))
+    print("Current platform:", sys.platform)
+    if sys.platform == "linux":
+        os.environ.setdefault("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+        os.environ.setdefault("XDG_CACHE_HOME", os.path.expanduser("~/.config"))
+    else:
+        os.environ.setdefault("XDG_CONFIG_HOME", os.path.join(DATA_PATH, "yt-dlp"))
+        os.environ.setdefault("XDG_CACHE_HOME", os.path.join(TEMP_PATH, "yt-dlp"))
     os.makedirs(os.environ["XDG_CONFIG_HOME"], exist_ok=True)
     os.makedirs(os.environ["XDG_CACHE_HOME"], exist_ok=True)
 

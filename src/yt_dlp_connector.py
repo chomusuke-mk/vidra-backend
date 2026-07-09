@@ -11,7 +11,6 @@ from typing import (
     Callable,
     Any,
     Dict,
-    List,
 )
 from logging import Logger
 import time
@@ -332,18 +331,17 @@ class YTDLPConnector:
             with self.info_lock[sub_id]:
                 self.info[sub_id]["file"] = os.path.abspath(filepath)
                 self.emit_info(sub_id)
-        if sub_id is not None:
-            with self.state_lock[sub_id]:
-                self.state[sub_id]["value"] = "completed"
-                self.state[sub_id]["progress_value"] = 1.0
-                self.state[sub_id]["progress_color"] = "green"
-                self.state[sub_id]["sub_state"] = ""
-                self.state[sub_id]["sub_state_color"] = "green"
-                self.state[sub_id]["time_left"] = "00:00:00"
-                self.state[sub_id]["time_total"] = time.strftime(
-                    "%H:%M:%S", time.gmtime(time_spent)
-                )
-                self.emit_state(sub_id)
+        with self.state_lock[sub_id]:
+            self.state[sub_id]["value"] = "completed"
+            self.state[sub_id]["progress_value"] = 1.0
+            self.state[sub_id]["progress_color"] = "green"
+            self.state[sub_id]["sub_state"] = ""
+            self.state[sub_id]["sub_state_color"] = "green"
+            self.state[sub_id]["time_left"] = "00:00:00"
+            self.state[sub_id]["time_total"] = time.strftime(
+                "%H:%M:%S", time.gmtime(time_spent)
+            )
+            self.emit_state(sub_id)
         if self.info[None]["type"] == "list":
             with self._m_state_lock:
                 state_snapshot = self.state.copy()
@@ -402,10 +400,11 @@ class YTDLPConnector:
             self.emit_state(None)
 
     def _get_last_log_error(self, id: Optional[str]) -> Optional[str]:
-        for message in get_logs_messages(self.get_logs(), level="ERROR"):
-            if id is None or id in message:
-                return message
-        return "Unknown error"
+        message = "Unknown error"
+        for msg in get_logs_messages(self.get_logs(), level="ERROR"):
+            if id is None or id in msg:
+                message = msg
+        return message
 
     def _mark_as_failed(self, sub_id: Optional[str]):
         self._assert_state(sub_id)
@@ -492,11 +491,6 @@ class YTDLPConnector:
         selected_ids: Iterable[str]
         if sum(1 for v in self.state.values() if v["value"] != "completed") > 2:
             # Si hay más de 2 elementos en values (1 es root), esperar a que el usuario seleccione cuáles descargar
-            self.logger.info(f"Waiting for user selection of entries for {url}")
-            self.state[None]["value"] = "awaiting_selection"
-            self.state[None]["sub_state"] = "Waiting for Selection"
-            self.state[None]["sub_state_color"] = "purple"
-            self.state[None]["progress_color"] = "purple"
             self._set_entries_to_select(
                 [
                     {
@@ -510,18 +504,23 @@ class YTDLPConnector:
                     and self.state[entry_id]["value"] != "completed"
                 ]
             )
+            self.logger.info(f"Waiting for user selection of entries for {url}")
+            self.state[None]["value"] = "awaiting_selection"
+            self.state[None]["sub_state"] = "Waiting for Selection"
+            self.state[None]["sub_state_color"] = "purple"
+            self.state[None]["progress_color"] = "purple"
             self.emit_state()
             # Esperar a que el usuario seleccione las entradas a descargar
             self.event.wait()
             # Obtener las entradas seleccionadas
-            self.state[None]["value"] = "extracting_information"
-            self.emit_state()
             self.handle_requests()
             selected_ids = [
                 entry_id
                 for entry_id in self.state.keys()
                 if entry_id is not None and entry_id in self.get_selected_entry_ids()
             ]
+            self.state[None]["value"] = "extracting_information"
+            self.emit_state()
         else:
             selected_ids = [
                 entry_id
@@ -581,5 +580,5 @@ class YTDLPConnector:
 
             if self.info[None]["type"] == "list" or not error_code:
                 self._mark_as_completed(None, None)
-            else:
+            elif self.state[None]["value"] != "completed":
                 self._mark_as_failed(None)

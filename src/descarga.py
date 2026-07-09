@@ -219,12 +219,13 @@ class Descarga:
             if (
                 self.state["value"] != "requested"
                 and self.state["value"] != "failed"
+                and self.state["value"] != "completed_with_errors"
                 and self.state["value"] != "paused"
                 and self.state["value"] != "cancelled"
             ):
                 raise ValueError(
                     "No se puede iniciar la descarga si no esta en estado 'requested', "
-                    f"'failed', 'paused' o 'cancelled', estado actual: {self.state['value']}"
+                    f"'failed', 'paused', 'cancelled' o 'completed_with_errors', estado actual: {self.state['value']}"
                 )
             if not self._init_logger(self._logger):
                 raise ValueError("Error al inicializar el logger")
@@ -260,7 +261,16 @@ class Descarga:
             self._eliminar_descarga()
         except Exception as e:
             self._set_state(
-                {**self.state, "value": "failed", "sub_state": str(e)[:100]}, None
+                {
+                    **self.state,
+                    "value": "failed",
+                    "sub_state": (self.state.get("sub_state") or "")
+                    + " "
+                    + str(e)[:100],
+                    "progress_color": "red",
+                    "sub_state_color": "red",
+                },
+                None,
             )
             if self._logger:
                 self._logger.error(f"Error al descargar {self.info['url']}: {e}")
@@ -291,7 +301,16 @@ class Descarga:
 
     def _pausar_descarga(self):
         self._select_entries_event.set()
-        self._set_state({**self.state, "value": "paused"}, None)
+        self._set_state(
+            {
+                **self.state,
+                "value": "paused",
+                "progress_color": "yellow",
+                "sub_state_color": "yellow",
+                "sub_state": "Paused",
+            },
+            None,
+        )
         for sub_descarga in self.sub_descargas:
             if sub_descarga.state["value"] == "in_progress":
                 self._set_state(
@@ -329,9 +348,19 @@ class Descarga:
     def _cancelar_descarga(self):
         self._select_entries_event.set()
         self._clear_temp_files()
-        self._set_state({**self.state, "value": "cancelled"}, None)
+        self._set_state(
+            {
+                **self.state,
+                "value": "cancelled",
+                "progress_color": "gray",
+                "sub_state_color": "gray",
+                "sub_state": "Cancelled",
+            },
+            None,
+        )
         if self._logger:
-            self._logger.info(f"Descarga {self.id} cancelada por el usuario")
+            self._logger.info(f"Descarga {self.id} cancelada")
+        self.cancel_requested = False
 
     def eliminar_descarga(self):
         with self._lock:
@@ -371,6 +400,7 @@ class Descarga:
             self._close_logger()
         if os.path.exists(self._log_file):
             os.remove(self._log_file)
+        self.delete_requested = False
 
     def _clear_temp_files(self):
         if "paths" in self.options and "temp" in self.options["paths"]:

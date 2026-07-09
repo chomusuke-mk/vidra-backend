@@ -434,16 +434,19 @@ class App:
             descarga = next((d for d in self.descargas if d.id == id), None)
         if descarga is None:
             raise ValueError(f"Descarga con id {id} no encontrada")
+
+        def run_descarga():
+            descarga.descargar()
         if action == "pause":
             descarga.pausar_descarga()
         elif action == "resume":
-            descarga.descargar()
+            Thread(target=run_descarga, daemon=True).start()
         elif action == "cancel":
             descarga.cancelar_descarga()
         elif action == "delete":
             descarga.eliminar_descarga()
         elif action == "retry":
-            descarga.descargar()
+            Thread(target=run_descarga, daemon=True).start()
 
     def get_entries_to_select(self, id: str):
         with self.lock:
