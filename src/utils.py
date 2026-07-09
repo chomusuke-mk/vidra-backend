@@ -46,7 +46,7 @@ def configure_logger(
     log_stream_handler = StringIOHandler(log_stream, Lock())
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     formatter = SinColoresFormatter(
         "%(asctime)s|%(levelname)s|%(message)s", datefmt="%Y/%m/%d %H:%M"
     )
