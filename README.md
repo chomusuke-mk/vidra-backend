@@ -152,11 +152,12 @@ Abre una conexión persistente (Server-Sent Events) para recibir el progreso en 
 - **GET** `/subscribe?id={download_id}&everything=false`
 - **Respuesta Exitosa:** `200 OK` (Content-Type: `text/event-stream`).
 
-### 8. Control de Descarga (En desarrollo)
+### 8. Control de Descarga
 
-Permite pausar, reanudar, cancelar o reintentar una descarga. _(Actualmente no implementado - 501)._
+Permite pausar, reanudar, cancelar o reintentar una descarga.
 
-- **PATCH** `/downloads?id={download_id}&action={pause|resume|cancel|retry}`
+- **PATCH** `/downloads?id={download_id}&action={pause|resume|cancel|delete|retry}`
+- **Respuesta Exitosa:** `200 OK`
 
 ## 🔒 Notas de Seguridad y Certificados
 
