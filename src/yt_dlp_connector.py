@@ -47,9 +47,9 @@ class YTDLPConnector:
         state: State,
         set_state: Callable[[State, Optional[str]], None],
         set_info: Callable[[Info, Optional[str]], None],
-        sub_descargas: List[Descarga_Hija_dict],
-        set_entries_to_select: Callable[[List[Descarga_Hija_dict]], None],
-        get_selected_entries: Callable[[], List[str]],
+        sub_descargas: Iterable[Descarga_Hija_dict],
+        set_entries_to_select: Callable[[Iterable[Descarga_Hija_dict]], None],
+        get_selected_entry_ids: Callable[[], Iterable[str]],
         select_entries_event: Event,
         handle_requests: Callable[[], None],
         get_logs: Callable[[], str],
@@ -60,7 +60,7 @@ class YTDLPConnector:
         self._set_state = set_state
         self._set_info = set_info
         self._set_entries_to_select = set_entries_to_select
-        self.get_selected_entries = get_selected_entries
+        self.get_selected_entry_ids = get_selected_entry_ids
         self.event = select_entries_event
         self.handle_requests = handle_requests
         self.get_logs = get_logs
@@ -227,7 +227,7 @@ class YTDLPConnector:
         self._assert_state(sub_id)
 
         time_spent = time.time() - self.time_start.setdefault(sub_id, time.time())
-        if d["status"] in ["downloading", "finished"]:
+        if d["status"] == "downloading" or d["status"] == "finished":
             downloaded_bytes = to_int(d.get("downloaded_bytes"))
             downloaded_bytes_str = bytes_to_human_readable(downloaded_bytes)
             total_bytes = to_int(d.get("total_bytes", d.get("total_bytes_estimate")))
@@ -248,9 +248,7 @@ class YTDLPConnector:
                     and total_bytes > 0
                     else None
                 )
-                self.state[sub_id]["progress_color"] = (
-                    "blue" if d["status"] == "downloading" else "green"
-                )
+                self.state[sub_id]["progress_color"] = "blue"
                 self.state[sub_id]["speed"] = speed_str if speed is not None else None
                 self.state[sub_id]["time_spent"] = time.strftime(
                     "%H:%M:%S", time.gmtime(time_spent)
@@ -270,6 +268,7 @@ class YTDLPConnector:
             with self.state_lock[sub_id]:
                 self.state[sub_id]["value"] = "failed"
                 self.state[sub_id]["progress_color"] = "red"
+                self.state[sub_id]["sub_state_color"] = "red"
                 if emit:
                     self.emit_state(sub_id)
 
@@ -325,28 +324,30 @@ class YTDLPConnector:
         elif self.info[None]["type"] == "video":
             self._mark_as_completed(None, filepath)
 
-    def _mark_as_completed(self, sub_id: Optional[str], filepath: str):
+    def _mark_as_completed(self, sub_id: Optional[str], filepath: Optional[str]):
         self._assert_state(sub_id)
         self._assert_info(sub_id)
         time_spent = time.time() - self.time_start.setdefault(sub_id, time.time())
-        with self.info_lock[sub_id]:
-            self.info[sub_id]["file"] = os.path.abspath(filepath)
-            self.emit_info(sub_id)
-        with self.state_lock[sub_id]:
-            self.state[sub_id]["value"] = "completed"
-            self.state[sub_id]["progress_value"] = 1.0
-            self.state[sub_id]["progress_color"] = "green"
-            self.state[sub_id]["sub_state"] = ""
-            self.state[sub_id]["sub_state_color"] = "green"
-            self.state[sub_id]["time_left"] = "00:00:00"
-            self.state[sub_id]["time_total"] = time.strftime(
-                "%H:%M:%S", time.gmtime(time_spent)
-            )
-            self.emit_state(sub_id)
+        if filepath:
+            with self.info_lock[sub_id]:
+                self.info[sub_id]["file"] = os.path.abspath(filepath)
+                self.emit_info(sub_id)
+        if sub_id is not None:
+            with self.state_lock[sub_id]:
+                self.state[sub_id]["value"] = "completed"
+                self.state[sub_id]["progress_value"] = 1.0
+                self.state[sub_id]["progress_color"] = "green"
+                self.state[sub_id]["sub_state"] = ""
+                self.state[sub_id]["sub_state_color"] = "green"
+                self.state[sub_id]["time_left"] = "00:00:00"
+                self.state[sub_id]["time_total"] = time.strftime(
+                    "%H:%M:%S", time.gmtime(time_spent)
+                )
+                self.emit_state(sub_id)
         if self.info[None]["type"] == "list":
             with self._m_state_lock:
                 state_snapshot = self.state.copy()
-            time_spent = time.time() - self.time_start.setdefault(sub_id, time.time())
+            time_spent = time.time() - self.time_start.setdefault(None, time.time())
             completed_count = sum(
                 1
                 for other_sub_id, state in state_snapshot.items()
@@ -361,7 +362,6 @@ class YTDLPConnector:
             self.state[None]["progress_value"] = (
                 (completed_count / total_count) if total_count > 0 else None
             )
-            self.state[None]["progress_color"] = "blue" if total_count > 0 else None
             self.state[None]["time_spent"] = time.strftime(
                 "%H:%M:%S", time.gmtime(time_spent)
             )
@@ -388,16 +388,22 @@ class YTDLPConnector:
             )
             if sub_id is None:
                 is_completed = completed_count == total_count and total_count > 0
-                self.state[None]["value"] = "completed" if is_completed else "failed"
-                self.state[None]["sub_state"] = "Finished"
-                self.state[None]["sub_state_color"] = "green" if is_completed else "red"
-                self.state[None]["progress_color"] = "green" if is_completed else "red"
+                self.state[None]["value"] = (
+                    "completed" if is_completed else "completed_with_errors"
+                )
+                self.state[None]["sub_state"] = ""
+                self.state[None]["sub_state_color"] = (
+                    "green" if is_completed else "orange"
+                )
+                self.state[None]["progress_color"] = (
+                    "green" if is_completed else "orange"
+                )
                 self.state[None]["time_left"] = "00:00:00"
             self.emit_state(None)
 
-    def _get_last_log_error(self, id: str) -> Optional[str]:
+    def _get_last_log_error(self, id: Optional[str]) -> Optional[str]:
         for message in get_logs_messages(self.get_logs(), level="ERROR"):
-            if id is not None and id in message:
+            if id is None or id in message:
                 return message
         return "Unknown error"
 
@@ -410,9 +416,7 @@ class YTDLPConnector:
             self.state[sub_id]["time_total"] = None
             self.state[sub_id]["speed"] = None
             self.state[sub_id]["sub_state_color"] = "red"
-            self.state[sub_id]["sub_state"] = self._get_last_log_error(
-                sub_id if sub_id is not None else self.id
-            )
+            self.state[sub_id]["sub_state"] = self._get_last_log_error(sub_id)
             self.emit_state(sub_id)
 
     def download(self, url: Optional[str]):
@@ -421,126 +425,131 @@ class YTDLPConnector:
         # Lazy import to reduce startup time
         from yt_dlp import YoutubeDL, parse_options
 
-        command = options_parser(self.options)
-        self.logger.info(f"YDL options: {command}")
-        parsed = parse_options(command)
-        ydl_opts = parsed.ydl_opts
-        ydl_opts["logger"] = YTDLPLoggerAdapter(logger=self.logger)
-        ydl_opts["progress_hooks"] = []
-        ydl_opts["postprocessor_hooks"] = []
-        ydl_opts["post_hooks"] = []
-
-        self.logger.info(f"Extracting information for {url}")
-        with YoutubeDL(ydl_opts) as ytdlp:
-            # Obtener información ================================================================
+        # Obtener información ================================================================
+        if self.info[None]["type"] == "unknown":
+            self.logger.info(f"Extracting information for {url}")
+            command = options_parser(self.options)
+            self.logger.info(f"YDL options: {command}")
+            parsed = parse_options(command)
+            ydl_opts = parsed.ydl_opts
+            ydl_opts["logger"] = YTDLPLoggerAdapter(logger=self.logger)
+            ydl_opts["progress_hooks"] = []
+            ydl_opts["postprocessor_hooks"] = []
+            ydl_opts["post_hooks"] = []
             self._assert_state(None)
-            self.state[None]["value"] = "identifying"
-            self.state[None]["sub_state"] = "Identifying"
-            self.state[None]["sub_state_color"] = "yellow"
+            self.state[None]["value"] = "extracting_information"
+            self.state[None]["sub_state"] = "Extracting Information"
+            self.state[None]["sub_state_color"] = "cyan"
+            self.state[None]["progress_color"] = "cyan"
             self.emit_state()
-            info = ytdlp.extract_info(url, download=False, process=False)
-            if not isinstance(info, dict):
-                self._mark_as_failed(None)
-                raise ValueError("Failed to extract information")
-            self._info_hook(info, None, handle=False, is_first=True)
-
-            # Inferencia adicional del tipo------------
-            if self.info[None]["type"] == "unknown":
-                if self.info[None]["url"] != url:
-                    self.logger.info("Reintentando extracción de información...")
-                    url = self.info[None]["url"] or url
-                    info = ytdlp.extract_info(url, download=False, process=False)
-                    self._info_hook(info, None, handle=False, is_first=True)
-                if self.info[None]["type"] == "unknown":
-                    self.info[None]["type"] = "video"
-            if self.info[None]["type"] == "list":
-                entries = info.get("entries")
-                if not isinstance(entries, Iterable):
+            with YoutubeDL(ydl_opts) as ytdlp:
+                info = ytdlp.extract_info(url, download=False, process=False)
+                if not isinstance(info, dict):
                     self._mark_as_failed(None)
-                    raise ValueError("Failed to extract entries from playlist")
+                    raise ValueError("Failed to extract information")
+                self.info[None]["type"] = "unknown"
+                self._info_hook(info, None, handle=False, is_first=True)
+                # Inferencia adicional del tipo------------
+                if self.info[None]["type"] == "unknown":
+                    if self.info[None]["url"] != url:
+                        self.logger.info("Reintentando extracción de información...")
+                        url = self.info[None]["url"] or url
+                        info = ytdlp.extract_info(url, download=False, process=False)
+                        self._info_hook(info, None, handle=False, is_first=True)
+                    if self.info[None]["type"] == "unknown":
+                        self.info[None]["type"] = "video"
+                # Procesar entradas -------------------------------------------
+                entries: Iterable = []
+                if self.info[None]["type"] == "list":
+                    if "entries" in info and isinstance(info["entries"], Iterable):
+                        entries = info["entries"]
+                        self.state[None]["sub_state"] = "Collecting Entries"
+                    else:
+                        self._mark_as_failed(None)
+                        raise ValueError("Failed to extract entries from playlist")
                 total = to_int(info.get("playlist_count"))
-                entries_ids: List[str] = []
                 for index, entry in enumerate(entries):
-                    self.state[None]["sub_state"] = "Collecting Entries"
-                    self.state[None]["sub_state_color"] = "yellow"
+                    if (
+                        not isinstance(entry, dict)
+                        or not entry.get("id")
+                        or not isinstance(entry["id"], str)
+                        or entry["id"] in self.state
+                    ):
+                        total = total - 1 if total is not None and total > 0 else None
+                    else:
+                        self._info_hook(entry, entry["id"], emit=False, handle=False)
+                        self._assert_state(entry["id"])
+                        self.state[entry["id"]]["value"] = "requested"
+
                     self.state[None]["progress_label"] = (
                         f"{index + 1}/{total if total is not None else '?'}"
                     )
                     self.state[None]["progress_value"] = (
                         (index + 1) / total if total is not None and total > 0 else None
                     )
-                    self.state[None]["progress_color"] = "yellow"
                     self.emit_state()
-                    if (
-                        isinstance(entry, dict)
-                        and entry.get("id")
-                        and isinstance(entry["id"], str)
-                    ):
-                        self._info_hook(entry, entry["id"], emit=False, handle=False)
-                        self._assert_state(entry["id"])
-                        self.state[entry["id"]]["value"] = "requested"
-                        if entry["id"] not in entries_ids:
-                            entries_ids.append(entry["id"])
-                selected_ids: List[str] = []
-                if len(entries_ids) > 1:
-                    # Si hay más de una entrada, esperar a que el usuario seleccione cuáles descargar
-                    self.logger.info(f"Waiting for user selection of entries for {url}")
-                    self.state[None]["value"] = "wait_for_selection"
-                    self.state[None]["sub_state"] = "Waiting for Selection"
-                    self.state[None]["sub_state_color"] = "yellow"
-                    self._set_entries_to_select(
-                        [
-                            {
-                                "sub_id": entry_id,
-                                "parent_id": self.id,
-                                "info": self.info[entry_id],
-                                "state": self.state[entry_id],
-                            }
-                            for entry_id in entries_ids
-                        ]
-                    )
-                    self.emit_state()
-                    # Esperar a que el usuario seleccione las entradas a descargar
-                    self.event.wait()
-                    self.handle_requests()
-                    selected_ids = self.get_selected_entries()
-                else:
-                    selected_ids = entries_ids
-                selected_ids = [id for id in entries_ids if id in selected_ids]
-                self.state[None]["value"] = "identifying"
-                self.emit_state()
-                self.logger.info(f"Selected ids: {selected_ids}")
+        # Manejar selección de entradas ======================================================
+        selected_ids: Iterable[str]
+        if sum(1 for v in self.state.values() if v["value"] != "completed") > 2:
+            # Si hay más de 2 elementos en values (1 es root), esperar a que el usuario seleccione cuáles descargar
+            self.logger.info(f"Waiting for user selection of entries for {url}")
+            self.state[None]["value"] = "awaiting_selection"
+            self.state[None]["sub_state"] = "Waiting for Selection"
+            self.state[None]["sub_state_color"] = "purple"
+            self.state[None]["progress_color"] = "purple"
+            self._set_entries_to_select(
+                [
+                    {
+                        "sub_id": entry_id,
+                        "parent_id": self.id,
+                        "info": self.info[entry_id],
+                        "state": self.state[entry_id],
+                    }
+                    for entry_id in self.state.keys()
+                    if entry_id is not None
+                    and self.state[entry_id]["value"] != "completed"
+                ]
+            )
+            self.emit_state()
+            # Esperar a que el usuario seleccione las entradas a descargar
+            self.event.wait()
+            # Obtener las entradas seleccionadas
+            self.state[None]["value"] = "extracting_information"
+            self.emit_state()
+            self.handle_requests()
+            selected_ids = [
+                entry_id
+                for entry_id in self.state.keys()
+                if entry_id is not None and entry_id in self.get_selected_entry_ids()
+            ]
+        else:
+            selected_ids = [
+                entry_id
+                for entry_id in self.state.keys()
+                if entry_id is not None and self.state[entry_id]["value"] != "completed"
+            ]
 
-                # Emitir las entradas seleccionadas
-                total_matched = len(selected_ids)
-                for id in selected_ids:
-                    self._assert_state(id)
-                    self._assert_state(id)
-                    self._assert_info(id)
-                    self.state[id]["value"] = "pending"
-                    self.emit_state(id)
-                    self.emit_info(id)
-
-                self.logger.info(f"Total selected entries: {total_matched}")
-                self.options["playlist_ids"] = selected_ids
-                download_archive = self.options.get("download_archive")
-                if not download_archive:
-                    temp_path = self.options.get("paths", {}).get("temp") or ""
-                    self.options["download_archive"] = os.path.join(
-                        temp_path, f"{self.id}_download_archive.txt"
-                    )
-
-                self.state[None]["sub_state"] = "Downloading"
-                self.state[None]["sub_state_color"] = "blue"
-                self.state[None]["progress_label"] = f"0/{total_matched}"
-                self.state[None]["progress_value"] = 0.0 if total_matched > 0 else None
-                self.state[None]["progress_color"] = (
-                    "blue" if total_matched > 0 else None
+        total_matched = len(selected_ids)
+        if selected_ids:
+            # Emitir las entradas seleccionadas
+            for id in selected_ids:
+                self._assert_state(id)
+                self._assert_info(id)
+                self.state[id]["value"] = "pending"
+                self.emit_state(id)
+                self.emit_info(id)
+            self.options["playlist_ids"] = selected_ids
+            download_archive = self.options.get("download_archive")
+            if not download_archive:
+                temp_path = self.options.get("paths", {}).get("temp") or ""
+                self.options["download_archive"] = os.path.join(
+                    temp_path, f"{self.id}_download_archive.txt"
                 )
-                self.time_start[None] = time.time()
-                self.emit_state()
+            self.state[None]["progress_label"] = f"0/{total_matched}"
+            self.state[None]["progress_value"] = 0.0 if total_matched > 0 else None
+            self.emit_state()
 
-        # Descargar
+        # Descargar ==========================================================================
         self.options["playlist"] = True if self.info[None]["type"] == "list" else False
         command = options_parser(self.options)
         parsed = parse_options(command)
@@ -551,24 +560,26 @@ class YTDLPConnector:
         ydl_opts["post_hooks"] = [self._post_hook]
         with YoutubeDL(ydl_opts) as ytdlp:
             self.logger.info(f"Starting download of {url}")
-            self.state[None] = {"value": "in_progress"}
+            self.state[None]["value"] = "in_progress"
+            self.state[None]["sub_state"] = "Downloading"
+            self.state[None]["sub_state_color"] = "blue"
+            self.state[None]["progress_color"] = "blue"
+            self.time_start[None] = time.time()
             self.emit_state()
             self.handle_requests()
-            ytdlp.download(url)
+            error_code = ytdlp.download(url)
             self.handle_requests()
-            if self.info[None]["type"] == "list":
-                # Marcar como fallidas sus entries no terminadas
-                for sub_id, state in self.state.items():
-                    if (
-                        sub_id is not None
-                        and state["value"] == "pending"
-                        or state["value"] == "in_progress"
-                    ):
+
+            for sub_id, state in self.state.items():
+                if sub_id is None:
+                    continue
+                if state["value"] == "pending" or state["value"] == "in_progress":
+                    if not error_code:
+                        self._mark_as_completed(sub_id, None)
+                    else:
                         self._mark_as_failed(sub_id)
-                self._mark_as_completed(None, "")
-            elif self.info[None]["type"] == "video":
-                if (
-                    self.state[None]["value"] == "in_progress"
-                    or self.state[None]["value"] == "pending"
-                ):
-                    self._mark_as_failed(None)
+
+            if self.info[None]["type"] == "list" or not error_code:
+                self._mark_as_completed(None, None)
+            else:
+                self._mark_as_failed(None)

@@ -2,11 +2,12 @@ import os
 import json
 import sqlite3
 import atexit
-from typing import Dict, Optional, List, Any, Union
+from typing import Dict, Literal, Optional, List, Any, Union
 from utils import configure_logger, close_logger
 from threading import Lock, Thread, Event
 from descarga import Descarga, DeltaManager, Descarga_Hija
 from yt_dlp_parser_types import is_valid_options
+
 
 class App:
     def __init__(
@@ -48,8 +49,14 @@ class App:
         self._load_state()
 
         for d in self.descargas:
-            if d.state["value"] in ["identifying", "wait_for_selection", "in_progress"]:
+            if d.state["value"] == "in_progress":
                 d.pausar_descarga()
+            elif (
+                d.state["value"] == "requested"
+                or d.state["value"] == "extracting_information"
+                or d.state["value"] == "awaiting_selection"
+            ):
+                d.eliminar_descarga()
 
         # Iniciar el Hilo Guardian (escucha deltas y persiste cambios)
         self._db_thread = Thread(target=self._background_save, daemon=True)
@@ -405,7 +412,7 @@ class App:
             ffmpeg_path=self.ffmpeg_path,
             quickjs_path=self.quickjs_path,
             state={
-                "value": "pending",
+                "value": "requested",
             },
             sub_descargas=[],
             delta_manager=self.delta_manager,
@@ -415,10 +422,28 @@ class App:
         self.logger.info(f"Descarga {descarga_id} agregada: {url}")
 
         def run_descarga():
-            descarga.iniciar_descarga()
+            descarga.descargar()
 
         Thread(target=run_descarga, daemon=True).start()
         return descarga_id
+
+    def update_download(
+        self, id: str, action: Literal["pause", "resume", "cancel", "delete", "retry"]
+    ):
+        with self.lock:
+            descarga = next((d for d in self.descargas if d.id == id), None)
+        if descarga is None:
+            raise ValueError(f"Descarga con id {id} no encontrada")
+        if action == "pause":
+            descarga.pausar_descarga()
+        elif action == "resume":
+            descarga.descargar()
+        elif action == "cancel":
+            descarga.cancelar_descarga()
+        elif action == "delete":
+            descarga.eliminar_descarga()
+        elif action == "retry":
+            descarga.descargar()
 
     def get_entries_to_select(self, id: str):
         with self.lock:
@@ -427,18 +452,17 @@ class App:
             raise ValueError(f"Descarga con id {id} no encontrada")
         if descarga.info["type"] != "list":
             raise ValueError("La descarga no es una lista")
-        return descarga.get_entries_to_select()
+        return descarga.entries_to_select
 
     def select_entries(self, id: str, entries: List[str]):
         with self.lock:
             descarga = next((d for d in self.descargas if d.id == id), None)
         if descarga is None:
             raise ValueError(f"Descarga con id {id} no encontrada")
-        descarga.set_selected_entries(entries)
+        descarga.set_selected_entry_ids(entries)
 
     def subscribe_to_deltas(self, id: Optional[str], everything: bool):
         return self.delta_manager.subscribe(id=id, everything=everything)
-
 
     def shutdown(self):
         """Detiene el hilo guardián de forma segura."""
@@ -448,8 +472,14 @@ class App:
         print("Gracefully shutting down...\n\n")
         self._stop_event.set()
         for d in self.descargas:
-            if d.state["value"] in ["identifying", "wait_for_selection", "in_progress"]:
+            if d.state["value"] == "in_progress":
                 d.pausar_descarga()
+            elif (
+                d.state["value"] == "requested"
+                or d.state["value"] == "extracting_information"
+                or d.state["value"] == "awaiting_selection"
+            ):
+                d.eliminar_descarga()
         if self._db_thread.is_alive():
             self._db_thread.join()
         self._save_state()

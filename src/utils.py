@@ -34,6 +34,7 @@ class SinColoresFormatter(logging.Formatter):
 def configure_logger(
     log_file: str, logger_name: str
 ) -> Tuple[logging.Logger, io.StringIO]:
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
     if os.path.exists(log_file):
         with open(log_file, "r", encoding="utf-8") as f:
             contenido = f.read()

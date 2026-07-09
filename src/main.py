@@ -181,14 +181,20 @@ try:
             return jsonify({"error": "ID is required"}), 400
         if not action:
             return jsonify({"error": "Action is required"}), 400
-        if action not in ["pause", "resume", "cancel", "retry"]:
+        if (
+            action != "pause"
+            and action != "resume"
+            and action != "cancel"
+            and action != "delete"
+            and action != "retry"
+        ):
             return jsonify(
                 {
-                    "error": "Invalid action, must be one of 'pause', 'resume', 'cancel' or 'retry'"
+                    "error": "Invalid action, must be one of 'pause', 'resume', 'cancel', 'delete', 'retry'"
                 }
             ), 400
-        # TODO: implement pause, resume, cancel and retry actions
-        return jsonify({"error": f"Action {action} not implemented yet"}), 501
+        app.update_download(id=download_id, action=action)
+        return jsonify({"message": f"Action {action} performed successfully"}), 200
 
     @server.route("/select-entries", methods=["GET"])
     @token_required

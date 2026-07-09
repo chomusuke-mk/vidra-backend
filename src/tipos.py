@@ -2,7 +2,17 @@ from typing import TypedDict, Literal, Optional, NotRequired, Any
 import logging
 
 
-type Color = Literal["green", "yellow", "red", "blue", "gray"]
+type Color = Literal[
+    "green",  # completado
+    "yellow",  # pausado
+    "red",  # error
+    "blue",  # en proceso
+    "gray",  # cancelado
+    "orange",  # error parcial
+    "purple",  # esperando selección
+    "cyan",  # extrayendo información
+    "magenta",  # requested
+]
 
 
 class DownloadCancelled(Exception):
@@ -11,6 +21,9 @@ class DownloadCancelled(Exception):
 
 class DownloadPaused(Exception):
     """Excepción personalizada para indicar que la descarga ha sido pausada"""
+
+class DownloadDeleted(Exception):
+    """Excepción personalizada para indicar que la descarga ha sido eliminada"""
 
 class YTDLPLoggerAdapter:
     """
@@ -58,12 +71,13 @@ class State(TypedDict):
     value: Literal[
         "requested",
         "pending",
-        "identifying",
-        "wait_for_selection",
+        "extracting_information",
+        "awaiting_selection",
         "in_progress",
         "completed",
+        "completed_with_errors",
         "failed",
-        "canceled",
+        "cancelled",
         "paused",
         "deleted",
     ]
