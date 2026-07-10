@@ -78,8 +78,11 @@ class State(TypedDict):
         "completed_with_errors",
         "failed",
         "cancelled",
+        "cancelling",
         "paused",
+        "pausing",
         "deleted",
+        "deleting",
     ]
     # sub_state de yt-dlp y "Getting Info", "Collecting Entries"
     sub_state: NotRequired[Optional[str]]
@@ -96,6 +99,7 @@ class State(TypedDict):
     time_spent: NotRequired[Optional[str]]
     time_total: NotRequired[Optional[str]]
     time_left: NotRequired[Optional[str]]
+    error_message: NotRequired[Optional[str]]
 
 
 class Info(TypedDict):

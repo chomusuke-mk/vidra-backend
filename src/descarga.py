@@ -29,6 +29,13 @@ class Descarga:
     ):
         # Archivos temporales de descarga en temp/{id}/
         options.setdefault("paths", {})["temp"] = os.path.join(temp_path, id)
+        if (
+            not options.setdefault("force_overwrites", False)
+            and f"_{id}_"
+            not in options.setdefault("output", ["title", "-", "id", ".", "ext"])
+            and "output" in options
+        ):
+            options["output"].insert(-2, f"_{id}_")
         # Ubicación de ffmpeg y quickjs para yt-dlp
         options["ffmpeg_location"] = ffmpeg_path
         options.setdefault("js_runtimes", {})["quickjs"] = quickjs_path
@@ -264,9 +271,12 @@ class Descarga:
                 {
                     **self.state,
                     "value": "failed",
-                    "sub_state": (self.state.get("sub_state") or "")
-                    + " "
-                    + str(e)[:100],
+                    "sub_state": str(e)[:50]
+                    + (
+                        " : " + self.state["error_message"]
+                        if "error_message" in self.state and self.state["error_message"]
+                        else ""
+                    ),
                     "progress_color": "red",
                     "sub_state_color": "red",
                 },
@@ -281,7 +291,10 @@ class Descarga:
 
     def pausar_descarga(self):
         with self._lock:
-            if self.state["value"] != "in_progress":
+            if (
+                self.state["value"] != "in_progress"
+                and self.state["value"] != "pausing"
+            ):
                 raise ValueError(
                     f"No se puede pausar la descarga {self.id} si no esta en progreso"
                 )
@@ -296,6 +309,16 @@ class Descarga:
                     f"No se puede pausar la descarga {self.id} si esta siendo eliminada"
                 )
             self.pause_requested = True
+        self._set_state(
+            {
+                **self.state,
+                "value": "pausing",
+                "progress_color": "yellow",
+                "sub_state_color": "yellow",
+                "sub_state": "Pausing",
+            },
+            None,
+        )
         if not self._download_in_progress:
             self._pausar_descarga()
 
@@ -312,7 +335,10 @@ class Descarga:
             None,
         )
         for sub_descarga in self.sub_descargas:
-            if sub_descarga.state["value"] == "in_progress":
+            if (
+                sub_descarga.state["value"] == "in_progress"
+                or sub_descarga.state["value"] == "pausing"
+            ):
                 self._set_state(
                     {**sub_descarga.state, "value": "paused"}, sub_descarga.sub_id
                 )
@@ -326,6 +352,7 @@ class Descarga:
                 self.state["value"] != "in_progress"
                 and self.state["value"] != "pending"
                 and self.state["value"] != "paused"
+                and self.state["value"] != "cancelling"
             ):
                 raise ValueError(
                     f"No se puede cancelar la descarga {self.id} si no esta en estado 'requested', ",
@@ -342,6 +369,16 @@ class Descarga:
                     f"No se puede cancelar la descarga {self.id} si esta siendo eliminada"
                 )
             self.cancel_requested = True
+        self._set_state(
+            {
+                **self.state,
+                "value": "cancelling",
+                "progress_color": "gray",
+                "sub_state_color": "gray",
+                "sub_state": "Cancelling",
+            },
+            None,
+        )
         if not self._download_in_progress:
             self._cancelar_descarga()
 
@@ -358,6 +395,16 @@ class Descarga:
             },
             None,
         )
+        for sub_descarga in self.sub_descargas:
+            if (
+                sub_descarga.state["value"] == "in_progress"
+                or sub_descarga.state["value"] == "pending"
+                or sub_descarga.state["value"] == "paused"
+                or sub_descarga.state["value"] == "cancelling"
+            ):
+                self._set_state(
+                    {**sub_descarga.state, "value": "cancelled"}, sub_descarga.sub_id
+                )
         if self._logger:
             self._logger.info(f"Descarga {self.id} cancelada")
         self.cancel_requested = False
@@ -375,6 +422,7 @@ class Descarga:
                 and self.state["value"] != "failed"
                 and self.state["value"] != "cancelled"
                 and self.state["value"] != "paused"
+                and self.state["value"] != "deleting"
             ):
                 raise ValueError(
                     f"No se puede eliminar la descarga {self.id} si no esta en estado 'requested', ",
@@ -388,6 +436,16 @@ class Descarga:
                     f"No se puede cancelar la descarga {self.id} si esta siendo pausada"
                 )
             self.delete_requested = True
+        self._set_state(
+            {
+                **self.state,
+                "value": "deleting",
+                "progress_color": "gray",
+                "sub_state_color": "gray",
+                "sub_state": "Deleting",
+            },
+            None,
+        )
         if not self._download_in_progress:
             self._eliminar_descarga()
 
@@ -395,6 +453,11 @@ class Descarga:
         self._select_entries_event.set()
         self._clear_temp_files()
         self._set_state({**self.state, "value": "deleted"}, None)
+        for sub_descarga in self.sub_descargas:
+            if sub_descarga.state["value"] != "deleted":
+                self._set_state(
+                    {**sub_descarga.state, "value": "deleted"}, sub_descarga.sub_id
+                )
         if self._logger:
             self._logger.info(f"Descarga {self.id} eliminada por el usuario")
             self._close_logger()

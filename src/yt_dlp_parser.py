@@ -20,6 +20,8 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "ignore_errors": False,  # True=Ignorar errores, no lanzar excepción
     "abort_on_error": False,  # False=Si se lanza excepción, esta es ignorada
     "quiet": True,  # True=No imprimir detalles de la descarga
+    "use_part_files": True,  # True=Usar archivos .part para descargas incompletas, False=No usar archivos .part
+    "continue_download": True,  # True=Continuar descargas incompletas, False=Reiniciar descargas incompletas
     "use_extractors": ["all"],
     "flat_playlist": False,
     "proxy": "",
@@ -72,7 +74,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "abort_on_unavailable_fragments": False,
     "keep_fragments": False,
     "batch_file": False,
-    "force_overwrites": True,
+    "force_overwrites": False,
     "write_thumbnail": False,
     "skip_playlist_after_errors": "infinite",
     "retries": 10,
@@ -98,6 +100,8 @@ def options_parser(options: VidraOptions) -> List[str]:
         and "ignore_errors" in options
         and "abort_on_error" in options
         and "quiet" in options
+        and "use_part_files" in options
+        and "continue_download" in options
         and "use_extractors" in options
         and "flat_playlist" in options
         and "proxy" in options
@@ -169,6 +173,8 @@ def options_parser(options: VidraOptions) -> List[str]:
     ignore_errors = options["ignore_errors"]
     abort_on_error = options["abort_on_error"]
     quiet = options["quiet"]
+    use_part_files = options["use_part_files"]
+    continue_download = options["continue_download"]
     use_extractors = options["use_extractors"]
     flat_playlist = options["flat_playlist"]
     proxy = options["proxy"]
@@ -315,6 +321,14 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.append("--quiet")
     else:
         comando.append("--no-quiet")
+    if use_part_files:
+        comando.append("--part")
+    else:
+        comando.append("--no-part")
+    if continue_download:
+        comando.append("--continue")
+    else:
+        comando.append("--no-continue")
     if use_extractors:
         comando.extend(["--use-extractors", ",".join(use_extractors)])
     if flat_playlist:

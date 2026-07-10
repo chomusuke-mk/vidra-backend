@@ -337,6 +337,7 @@ class YTDLPConnector:
             self.state[sub_id]["progress_color"] = "green"
             self.state[sub_id]["sub_state"] = ""
             self.state[sub_id]["sub_state_color"] = "green"
+            self.state[sub_id]["error_message"] = ""
             self.state[sub_id]["time_left"] = "00:00:00"
             self.state[sub_id]["time_total"] = time.strftime(
                 "%H:%M:%S", time.gmtime(time_spent)
@@ -393,6 +394,7 @@ class YTDLPConnector:
                 self.state[None]["sub_state_color"] = (
                     "green" if is_completed else "orange"
                 )
+                self.state[None]["error_message"] = ""
                 self.state[None]["progress_color"] = (
                     "green" if is_completed else "orange"
                 )
@@ -415,7 +417,8 @@ class YTDLPConnector:
             self.state[sub_id]["time_total"] = None
             self.state[sub_id]["speed"] = None
             self.state[sub_id]["sub_state_color"] = "red"
-            self.state[sub_id]["sub_state"] = self._get_last_log_error(sub_id)
+            self.state[sub_id]["sub_state"] = None
+            self.state[sub_id]["error_message"] = self._get_last_log_error(sub_id)
             self.emit_state(sub_id)
 
     def download(self, url: Optional[str]):

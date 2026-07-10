@@ -49,14 +49,17 @@ class App:
         self._load_state()
 
         for d in self.descargas:
-            if d.state["value"] == "in_progress":
+            if d.state["value"] == "in_progress" or d.state["value"] == "pausing":
                 d.pausar_descarga()
             elif (
                 d.state["value"] == "requested"
                 or d.state["value"] == "extracting_information"
                 or d.state["value"] == "awaiting_selection"
+                or d.state["value"] == "deleting"
             ):
                 d.eliminar_descarga()
+            elif d.state["value"] == "cancelling":
+                d.cancelar_descarga()
 
         # Iniciar el Hilo Guardian (escucha deltas y persiste cambios)
         self._db_thread = Thread(target=self._background_save, daemon=True)
@@ -437,6 +440,7 @@ class App:
 
         def run_descarga():
             descarga.descargar()
+
         if action == "pause":
             descarga.pausar_descarga()
         elif action == "resume":

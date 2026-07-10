@@ -431,6 +431,10 @@ class VidraOptions(TypedDict):
     abort_on_error: NotRequired[bool]
     # Imprime detalles de la descarga
     quiet: NotRequired[bool]
+    # Usa archivos .part para descargas incompletas (True) o no los usa (False).
+    use_part_files: NotRequired[bool]
+    # Continúa descargas incompletas (True) o reinicia descargas incompletas (False).
+    continue_download: NotRequired[bool]
     # Nombres de extractores a usar (separados por coma).("all","default",expresión regular)
     use_extractors: NotRequired[List[str]]
     # Lista los videos de una playlist sin descargarlos.
@@ -638,6 +642,14 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "quiet":
+            if not isinstance(value, bool):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "use_part_files":
+            if not isinstance(value, bool):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "continue_download":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
