@@ -71,7 +71,6 @@ class State(TypedDict):
     value: Literal[
         "requested",
         "pending",
-        "extracting_information",
         "awaiting_selection",
         "in_progress",
         "completed",

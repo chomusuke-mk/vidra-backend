@@ -120,6 +120,7 @@ class YTDLPConnector:
         if handle:
             self.handle_requests()
         if not isinstance(d, dict):
+            self.logger.debug(f"Info hook called with: {d}")
             return
         self._assert_info(sub_id)
         with self.info_lock[sub_id]:
@@ -215,6 +216,7 @@ class YTDLPConnector:
             or not isinstance(d["status"], str)
             or d["status"] not in ["downloading", "finished", "error"]
         ):
+            self.logger.debug(f"Progress hook called with: {d}")
             return
 
         sub_id = (
@@ -237,6 +239,8 @@ class YTDLPConnector:
 
             with self.state_lock[sub_id]:
                 self.state[sub_id]["value"] = "in_progress"
+                self.state[sub_id]["sub_state"] = "downloading"
+                self.state[sub_id]["sub_state_color"] = "blue"
                 self.state[sub_id]["progress_label"] = (
                     f"{downloaded_bytes_str}/{total_bytes_str}"
                 )
@@ -263,13 +267,13 @@ class YTDLPConnector:
                 )
                 if emit:
                     self.emit_state(sub_id)
-        elif d["status"] == "error":
-            with self.state_lock[sub_id]:
-                self.state[sub_id]["value"] = "failed"
-                self.state[sub_id]["progress_color"] = "red"
-                self.state[sub_id]["sub_state_color"] = "red"
-                if emit:
-                    self.emit_state(sub_id)
+        # elif d["status"] == "error":
+        #    with self.state_lock[sub_id]:
+        #        self.state[sub_id]["value"] = "failed"
+        #        self.state[sub_id]["progress_color"] = "red"
+        #        self.state[sub_id]["sub_state_color"] = "red"
+        #        if emit:
+        #            self.emit_state(sub_id)
 
     def _postprocessor_hook(self, d: Any, emit=True, handle=True):
         if handle:
@@ -282,6 +286,7 @@ class YTDLPConnector:
             or not isinstance(d["status"], str)
             or d["status"] not in ["started", "finished"]
         ):
+            self.logger.debug(f"Postprocessor hook called with: {d}")
             return
         sub_id = (
             d["info_dict"].get("id")
@@ -295,6 +300,8 @@ class YTDLPConnector:
             self.state[sub_id] = {
                 "value": "in_progress",
                 "sub_state": d.get("postprocessor", ""),
+                "sub_state_color": "purple",
+                "progress_color": "purple",
             }
             self.time_start.setdefault(sub_id, time.time())
             if emit:
@@ -439,7 +446,7 @@ class YTDLPConnector:
             ydl_opts["postprocessor_hooks"] = []
             ydl_opts["post_hooks"] = []
             self._assert_state(None)
-            self.state[None]["value"] = "extracting_information"
+            self.state[None]["value"] = "in_progress"
             self.state[None]["sub_state"] = "Extracting Information"
             self.state[None]["sub_state_color"] = "cyan"
             self.state[None]["progress_color"] = "cyan"
@@ -522,7 +529,7 @@ class YTDLPConnector:
                 for entry_id in self.state.keys()
                 if entry_id is not None and entry_id in self.get_selected_entry_ids()
             ]
-            self.state[None]["value"] = "extracting_information"
+            self.state[None]["value"] = "in_progress"
             self.emit_state()
         else:
             selected_ids = [

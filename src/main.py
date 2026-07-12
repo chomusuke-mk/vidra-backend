@@ -44,6 +44,7 @@ try:
     import certifi
     import os
     import threading
+    import logging
     import _thread
     from app import App
 
@@ -55,6 +56,7 @@ try:
     TEMP_PATH = os.path.abspath(os.environ.get("TEMP_PATH", "./temp/temp"))
     FFMPEG_PATH = os.path.abspath(os.environ.get("FFMPEG_PATH", "./temp/ffmpeg"))
     QUICKJS_PATH = os.path.abspath(os.environ.get("QUICKJS_PATH", "./temp/quickjs"))
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", 5000))
@@ -63,15 +65,26 @@ try:
     cert_path = certifi.where()
     os.environ["SSL_CERT_FILE"] = cert_path
     os.environ["REQUESTS_CA_BUNDLE"] = cert_path
-    print("Current platform:", sys.platform)
     if sys.platform == "linux":
         os.environ.setdefault("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-        os.environ.setdefault("XDG_CACHE_HOME", os.path.expanduser("~/.config"))
+        os.environ.setdefault("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
     else:
         os.environ.setdefault("XDG_CONFIG_HOME", os.path.join(DATA_PATH, "yt-dlp"))
         os.environ.setdefault("XDG_CACHE_HOME", os.path.join(TEMP_PATH, "yt-dlp"))
     os.makedirs(os.environ["XDG_CONFIG_HOME"], exist_ok=True)
     os.makedirs(os.environ["XDG_CACHE_HOME"], exist_ok=True)
+    logging.basicConfig(level=LOG_LEVEL)
+
+    # --- PRINT DE VARIABLES DE ENTORNO PARA DEBUGGING ---
+    print("LOGS_PATH:", LOGS_PATH)
+    print("DATA_PATH:", DATA_PATH)
+    print("TEMP_PATH:", TEMP_PATH)
+    print("FFMPEG_PATH:", FFMPEG_PATH)
+    print("QUICKJS_PATH:", QUICKJS_PATH)
+    print("Current platform:", sys.platform)
+    print("XDG_CONFIG_HOME:", os.environ["XDG_CONFIG_HOME"])
+    print("XDG_CACHE_HOME:", os.environ["XDG_CACHE_HOME"])
+    print("Current LOG_LEVEL:", LOG_LEVEL)
 
     # --- INICIALIZACIÓN DEL SERVIDOR Y APLICACIÓN ---
     server = Flask(__name__)
