@@ -141,7 +141,7 @@ Si la URL pertenece a una lista de reproducción y requiere selección de elemen
 
     ```json
     {
-      "entries": [1, 3, 5, 6, 7, 8]
+      "entries": ["1", "3", "5", "6", "7", "8"]
     }
     ```
 
