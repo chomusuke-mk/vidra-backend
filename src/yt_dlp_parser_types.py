@@ -1,14 +1,11 @@
 from typing import (
-    Literal,
-    Final,
-    TypeGuard,
-    Dict,
-    NotRequired,
-    List,
-    Union,
-    get_args,
-    TypedDict,
     Any,
+    Final,
+    Literal,
+    NotRequired,
+    TypedDict,
+    TypeGuard,
+    get_args,
 )
 
 T_LANGUAGE = Literal[
@@ -416,15 +413,15 @@ class VidraOptions(TypedDict):
     # Presets para descargar la mejor pista de video disponible en ciertas resoluciones.
     video_resolution: NotRequired[Literal["default", T_VIDEO_OPTIONS]]
     # Idiomas de subtítulos a descargar (“en”, “es”, “all”, etc.).
-    sub_langs: NotRequired[List[Literal["all", T_LANGUAGE]]]
+    sub_langs: NotRequired[list[Literal["all", T_LANGUAGE]]]
     # Convierte los videos descargados a audio (usa ffmpeg).
     extract_audio: NotRequired[bool]
     # Indica si se descarga la lista completa (True) o solo un video (False).
     playlist: NotRequired[bool]
     # Categorías de SponsorBlock para crear capítulos (“all”, “intro”, “outro”, etc.).
-    sponsorblock_mark: NotRequired[List[T_SPONSORBLOCK_CATEGORIES]]
+    sponsorblock_mark: NotRequired[list[T_SPONSORBLOCK_CATEGORIES]]
     # Categorías de SponsorBlock para eliminar (“all”, “intro”, “outro”, etc.).
-    sponsorblock_remove: NotRequired[List[T_SPONSORBLOCK_CATEGORIES]]
+    sponsorblock_remove: NotRequired[list[T_SPONSORBLOCK_CATEGORIES]]
     # Ignora errores de descarga y continúa con el siguiente video.
     ignore_errors: NotRequired[bool]
     # Detiene el proceso de descarga si ocurre un error.
@@ -436,14 +433,14 @@ class VidraOptions(TypedDict):
     # Continúa descargas incompletas (True) o reinicia descargas incompletas (False).
     continue_download: NotRequired[bool]
     # Nombres de extractores a usar (separados por coma).("all","default",expresión regular)
-    use_extractors: NotRequired[List[str]]
+    use_extractors: NotRequired[list[str]]
     # Lista los videos de una playlist sin descargarlos.
     flat_playlist: NotRequired[bool]
     # Network Options ===========================================================================
     # Proxy HTTP/HTTPS/SOCKS. Ejemplo: socks5://user:pass@127.0.0.1:1080
     proxy: NotRequired[str]
     # Tiempo máximo de espera para conexiones (segundos).
-    socket_timeout: NotRequired[Union[int, Literal["infinite"]]]
+    socket_timeout: NotRequired[int | Literal["infinite"]]
     # Dirección IP del cliente para realizar la conexión.
     source_address: NotRequired[str]
     # Cliente a emular (chrome, chrome-110, firefox, edge, etc.).
@@ -461,16 +458,11 @@ class VidraOptions(TypedDict):
     # Usa conexión HTTP en lugar de HTTPS (solo YouTube).
     prefer_insecure: NotRequired[bool]
     # Encabezados HTTP personalizados.
-    add_headers: NotRequired[Dict[str, str]]
+    add_headers: NotRequired[dict[str, str]]
     # Archivo Netscape de cookies para autenticación.
-    cookies: NotRequired[Union[str, Literal[False]]]
+    cookies: NotRequired[str | Literal[False]]
     # Carga cookies directamente de un navegador instalado.
-    cookies_from_browser: NotRequired[
-        Union[
-            Literal[False],
-            T_BROWSERS,
-        ]
-    ]
+    cookies_from_browser: NotRequired[Literal[False] | T_BROWSERS]
     # Usuario o correo para autenticación.
     username: NotRequired[str]
     # Contraseña del usuario.
@@ -493,7 +485,7 @@ class VidraOptions(TypedDict):
     # Calidad del audio (0 mejor, 10 peor).
     audio_quality: NotRequired[T_AUDIO_QUALITY]
     # Cambia el contenedor del video sin recodificar.
-    remux_video: NotRequired[Union[Literal[False], T_REMUX_VIDEO_FORMATS]]
+    remux_video: NotRequired[Literal[False] | T_REMUX_VIDEO_FORMATS]
     # Inserta subtítulos en el archivo final.
     embed_subs: NotRequired[bool]
     # Inserta miniaturas en el archivo final.
@@ -505,7 +497,7 @@ class VidraOptions(TypedDict):
     # Inserta infojson en el archivo final.
     embed_info_json: NotRequired[bool]
     # Código de formato o expresión para selección (ver “FORMAT SELECTION”).
-    format: NotRequired[Union[str, List[str], List[List[str]]]]
+    format: NotRequired[str | list[str] | list[list[str]]]
     # Escribe metadatos en atributos extendidos del sistema.
     xattrs: NotRequired[bool]
     # Corrige errores conocidos del archivo (“never”, “warn”, “force”).
@@ -520,25 +512,18 @@ class VidraOptions(TypedDict):
     write_auto_subs: NotRequired[bool]
     # Download Options ==========================================================================
     # Plantilla de nombre del archivo de salida.
-    output: NotRequired[
-        List[
-            Union[
-                str,
-                T_OUTPUT_TEMPLATE_VARIABLES,
-            ]
-        ]
-    ]
+    output: NotRequired[list[str | T_OUTPUT_TEMPLATE_VARIABLES]]
     # Directorios donde guardar los diferentes tipos de archivos.
     paths: NotRequired[
-        Dict[
+        dict[
             T_PATHS_KEYS,
             str,
         ]
     ]
     # Ruta de archivo donde registrar los IDs descargados, para evitar duplicados.
-    download_archive: NotRequired[Union[Literal[False], str]]
+    download_archive: NotRequired[Literal[False] | str]
     # Ids de videos a descargar de la playlist
-    playlist_ids: NotRequired[List[str] | Literal["ALL_ITEMS"]]
+    playlist_ids: NotRequired[list[str] | Literal["ALL_ITEMS"]]
     # Fragmentos simultáneos a descargar (por defecto 1).
     concurrent_fragments: NotRequired[int]
     # Detiene la descarga si se encuentra un archivo ya existente.
@@ -550,7 +535,7 @@ class VidraOptions(TypedDict):
     # Mantiene los fragmentos descargados tras finalizar.
     keep_fragments: NotRequired[bool]
     # Archivo con URLs a descargar (una por línea).
-    batch_file: NotRequired[Union[Literal[False], str]]
+    batch_file: NotRequired[Literal[False] | str]
     # Sobrescribe archivos existentes (por defecto True).
     force_overwrites: NotRequired[bool]
     # Guarda la miniatura del video en disco.
@@ -558,23 +543,23 @@ class VidraOptions(TypedDict):
     # Descarga las transmisiones en vivo desde el inicio, si es compatible.
     live_from_start: NotRequired[bool]
     # Espera a que un video programado esté disponible antes de descargarlo.
-    wait_for_video: NotRequired[Union[Literal[False], int]]
+    wait_for_video: NotRequired[Literal[False] | int]
     # Marca el video como visto (si el sitio lo soporta).
     mark_watched: NotRequired[bool]
     # Entorno de ejecución para scripts JavaScript (deno, node, quickjs, bun).
-    js_runtimes: NotRequired[Dict[T_JS_RUNTIMES_KEYS, str]]
+    js_runtimes: NotRequired[dict[T_JS_RUNTIMES_KEYS, str]]
     # Número máximo de errores permitidos antes de saltar el resto de la playlist.
-    skip_playlist_after_errors: NotRequired[Union[int, Literal["infinite"]]]
+    skip_playlist_after_errors: NotRequired[int | Literal["infinite"]]
     # Reintentos en caso de error (por defecto 10).
-    retries: NotRequired[Union[int, Literal["infinite"]]]
+    retries: NotRequired[int | Literal["infinite"]]
     # Reintentos por error de acceso a archivo (por defecto 3).
-    file_access_retries: NotRequired[Union[int, Literal["infinite"]]]
+    file_access_retries: NotRequired[int | Literal["infinite"]]
     # Reintentos por fragmento fallido (por defecto 10).
-    fragment_retries: NotRequired[Union[int, Literal["infinite"]]]
+    fragment_retries: NotRequired[int | Literal["infinite"]]
     # Reintentos en caso de error en el extractor (por defecto 3).
-    extractor_retries: NotRequired[Union[int, Literal["infinite"]]]
+    extractor_retries: NotRequired[int | Literal["infinite"]]
     # Límite de velocidad, por ejemplo "500K" o "4.2M".
-    limit_rate: NotRequired[Union[Literal[False], str]]
+    limit_rate: NotRequired[Literal[False] | str]
 
 
 def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
@@ -605,15 +590,11 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "extract_audio":
+        elif key == "extract_audio" or key == "playlist":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "playlist":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "sponsorblock_mark":
+        elif key == "sponsorblock_mark" or key == "sponsorblock_remove":
             if not (
                 isinstance(value, list)
                 and all(
@@ -623,33 +604,13 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "sponsorblock_remove":
-            if not (
-                isinstance(value, list)
-                and all(
-                    isinstance(item, str) and item in SPONSORBLOCK_CATEGORIES
-                    for item in value
-                )
-            ):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "ignore_errors":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "abort_on_error":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "quiet":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "use_part_files":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "continue_download":
+        elif (
+            key == "ignore_errors"
+            or key == "abort_on_error"
+            or key == "quiet"
+            or key == "use_part_files"
+            or key == "continue_download"
+        ):
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -671,31 +632,15 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not (isinstance(value, int) or value == "infinite"):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "source_address":
+        elif key == "source_address" or key == "impersonate":
             if not isinstance(value, str):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "impersonate":
-            if not isinstance(value, str):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "force_ipv4":
+        elif key == "force_ipv4" or key == "force_ipv6" or key == "enable_file_urls":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "force_ipv6":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "enable_file_urls":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "geo_verification_proxy":
-            if not isinstance(value, str):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "xff":
+        elif key == "geo_verification_proxy" or key == "xff":
             if not isinstance(value, str):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -723,19 +668,12 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "username":
-            if not isinstance(value, str):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "password":
-            if not isinstance(value, str):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "twofactor":
-            if not isinstance(value, str):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "video_password":
+        elif (
+            key == "username"
+            or key == "password"
+            or key == "twofactor"
+            or key == "video_password"
+        ):
             if not isinstance(value, str):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -751,11 +689,7 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not isinstance(value, str) and value not in SUB_FORMATS:
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "video_multistreams":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "audio_multistreams":
+        elif key == "video_multistreams" or key == "audio_multistreams":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -770,28 +704,18 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "embed_subs":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "embed_thumbnail":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "embed_metadata":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "embed_chapters":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "embed_info_json":
+        elif (
+            key == "embed_subs"
+            or key == "embed_thumbnail"
+            or key == "embed_metadata"
+            or key == "embed_chapters"
+            or key == "embed_info_json"
+        ):
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "format":
-            if not (isinstance(value, str) or isinstance(value, list)):
+            if not (isinstance(value, (str, list))):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "xattrs":
@@ -810,11 +734,7 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not (isinstance(value, str) and value in THUMBNAIL_FORMATS):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "write_subs":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "write_auto_subs":
+        elif key == "write_subs" or key == "write_auto_subs":
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -857,19 +777,12 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not isinstance(value, int):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "break_on_existing":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "windows_filenames":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "abort_on_unavailable_fragments":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "keep_fragments":
+        elif (
+            key == "break_on_existing"
+            or key == "windows_filenames"
+            or key == "abort_on_unavailable_fragments"
+            or key == "keep_fragments"
+        ):
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -877,15 +790,11 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             if not (isinstance(value, str) or value is False):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "force_overwrites":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "write_thumbnail":
-            if not isinstance(value, bool):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "live_from_start":
+        elif (
+            key == "force_overwrites"
+            or key == "write_thumbnail"
+            or key == "live_from_start"
+        ):
             if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -907,23 +816,13 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "skip_playlist_after_errors":
-            if not (isinstance(value, int) or value == "infinite"):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "retries":
-            if not (isinstance(value, int) or value == "infinite"):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "file_access_retries":
-            if not (isinstance(value, int) or value == "infinite"):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "fragment_retries":
-            if not (isinstance(value, int) or value == "infinite"):
-                print(f"Invalid value for key '{key}': {value}")
-                return False
-        elif key == "extractor_retries":
+        elif (
+            key == "skip_playlist_after_errors"
+            or key == "retries"
+            or key == "file_access_retries"
+            or key == "fragment_retries"
+            or key == "extractor_retries"
+        ):
             if not (isinstance(value, int) or value == "infinite"):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
@@ -953,6 +852,6 @@ if __name__ == "__main__":
     }
     print(is_valid_options(invalid_options))  # Debería imprimir False
     str_assign_dict_to_vars = ""
-    for key in VidraOptions.__annotations__.keys():
+    for key in VidraOptions.__annotations__:
         str_assign_dict_to_vars += f'{key} = options["{key}"]\n'
     print(str_assign_dict_to_vars)

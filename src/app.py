@@ -1,11 +1,12 @@
-import os
-import json
-import sqlite3
 import atexit
-from typing import Dict, Literal, Optional, List, Any, Union
-from utils import configure_logger, close_logger
-from threading import Lock, Thread, Event
-from descarga import Descarga, DeltaManager, Descarga_Hija
+import json
+import os
+import sqlite3
+from threading import Event, Lock, Thread
+from typing import Any, Literal
+
+from descarga import DeltaManager, Descarga, Descarga_Hija
+from utils import close_logger, configure_logger
 from yt_dlp_parser_types import is_valid_options
 
 
@@ -34,7 +35,7 @@ class App:
         self._stop_event = Event()
 
         # Data en RAM
-        self.descargas: List[Descarga] = []
+        self.descargas: list[Descarga] = []
 
         # Logs
         self.logger, self.log_stream = configure_logger(
@@ -152,10 +153,10 @@ class App:
         finally:
             try:
                 subscription.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                self.logger.warning(f"No se pudo cerrar la suscripción: {exc}")
 
-    def _parse_delta_message(self, message: str) -> List[Dict[str, Any]]:
+    def _parse_delta_message(self, message: str) -> list[dict[str, Any]]:
         if not message.startswith("data: "):
             return []
         payload = message[len("data: ") :].strip()
@@ -168,7 +169,7 @@ class App:
             return []
         return data if isinstance(data, list) else []
 
-    def _apply_deltas(self, deltas: List[Dict[str, Any]]):
+    def _apply_deltas(self, deltas: list[dict[str, Any]]):
         if not deltas:
             return
 
@@ -200,9 +201,9 @@ class App:
     def _persist_delta(
         self,
         conn: sqlite3.Connection,
-        delta: Dict[str, Any],
-        descarga: Optional[Descarga],
-        sub_descarga: Optional[Descarga_Hija],
+        delta: dict[str, Any],
+        descarga: Descarga | None,
+        sub_descarga: Descarga_Hija | None,
     ):
         info = delta.get("info")
         status = delta.get("status")
@@ -339,7 +340,7 @@ class App:
             except Exception as e:
                 self.logger.error(f"Error al sincronizar con SQLite: {e}")
 
-    def get_logs(self, id: Optional[str] = None) -> str:
+    def get_logs(self, id: str | None = None) -> str:
         logs = ""
         if id is not None:
             descarga = next((d for d in self.descargas if d.id == id), None)
@@ -353,8 +354,8 @@ class App:
 
     def get_downloads(
         self,
-        id: Optional[str] = None,
-    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        id: str | None = None,
+    ) -> list[dict[str, Any]] | dict[str, Any]:
         with self.lock:
             descargas_snapshot = [
                 d for d in self.descargas if d.state["value"] != "deleted"
@@ -391,7 +392,7 @@ class App:
                 ][::-1],  # mostrar primero las sub-descargas mas recientes
             }
 
-    def add_download(self, url: str, options: Dict):
+    def add_download(self, url: str, options: dict):
         if not is_valid_options(options):
             raise ValueError("Opciones de descarga no válidas")
         with self.lock:
@@ -461,14 +462,14 @@ class App:
             raise ValueError("La descarga no es una lista")
         return descarga.entries_to_select
 
-    def select_entries(self, id: str, entries: List[str]):
+    def select_entries(self, id: str, entries: list[str]):
         with self.lock:
             descarga = next((d for d in self.descargas if d.id == id), None)
         if descarga is None:
             raise ValueError(f"Descarga con id {id} no encontrada")
         descarga.set_selected_entry_ids(entries)
 
-    def subscribe_to_deltas(self, id: Optional[str], everything: bool):
+    def subscribe_to_deltas(self, id: str | None, everything: bool):
         return self.delta_manager.subscribe(id=id, everything=everything)
 
     def shutdown(self):

@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 import traceback
 
 # =============================================================================
@@ -15,17 +15,18 @@ os.makedirs(os.path.dirname(SERVER_LOGS_FILE_PATH), exist_ok=True)
 class LoggerWriter:
     def __init__(self, filename):
         # Usamos append ("a") para no borrar el historial si se reinicia rápido
-        self.file = open(filename, "a", encoding="utf-8")
+        self.filename = filename
 
     def write(self, message):
-        self.file.write(message)
-        self.file.flush()  # Forzamos la escritura inmediata en disco
+        with open(self.filename, "a", encoding="utf-8") as f:
+            f.write(message)
+            f.flush()  # Forzamos la escritura inmediata en disco
 
     def flush(self):
-        self.file.flush()
+        pass
 
     def close(self):
-        self.file.close()
+        pass
 
 
 # Redirigimos la salida estándar (print) y la de errores (excepciones/Tracebacks)
@@ -39,13 +40,15 @@ try:
     print("\n" + "=" * 50)
     print("Iniciando entorno Python (Caja Negra activada)...")
     print("=" * 50)
-    from flask import Flask, jsonify, request, Response
-    from functools import wraps
-    import certifi
+    import _thread
+    import logging
     import os
     import threading
-    import logging
-    import _thread
+    from functools import wraps
+
+    import certifi
+    from flask import Flask, Response, jsonify, request
+
     from app import App
 
     # --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
@@ -59,12 +62,15 @@ try:
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
     HOST = os.environ.get("HOST", "0.0.0.0")
-    PORT = int(os.environ.get("PORT", 5000))
+    PORT = int(os.environ.get("PORT", "5000"))
 
     # --- CONFIGURACIÓN DE CERTIFICADOS Y RUTAS ---
     cert_path = certifi.where()
     os.environ["SSL_CERT_FILE"] = cert_path
     os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+    os.environ["PATH"] = (
+        f"{os.path.dirname(FFMPEG_PATH)}{os.pathsep}{os.environ.get('PATH', '')}"
+    )
     if sys.platform == "linux":
         os.environ.setdefault("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
         os.environ.setdefault("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))

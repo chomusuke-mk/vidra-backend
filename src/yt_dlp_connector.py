@@ -6,30 +6,29 @@ this module accept plain dictionaries/lists and optional hooks so callers can
 re-use their existing handlers without dealing with yt-dlp specific details.
 """
 
-from typing import (
-    Optional,
-    Callable,
-    Any,
-    Dict,
-)
-from logging import Logger
+import os
 import time
+from collections.abc import Callable, Iterable
+from logging import Logger
+from pathlib import Path
+from threading import Event, Lock
+from typing import (
+    Any,
+)
+
+import tldextract
+
+from descarga_hija import Descarga_Hija_dict
+from tipos import Info, State, YTDLPLoggerAdapter
 from utils import (
-    to_int,
-    to_float,
     bytes_to_human_readable,
     get_logs_messages,
     seconds_to_human_readable,
+    to_float,
+    to_int,
 )
-from threading import Lock, Event
 from yt_dlp_parser import options_parser
 from yt_dlp_parser_types import VidraOptions
-from descarga_hija import Descarga_Hija_dict
-from tipos import State, Info, YTDLPLoggerAdapter
-import os
-import tldextract
-from pathlib import Path
-from collections.abc import Iterable
 
 
 class YTDLPConnector:
@@ -44,8 +43,8 @@ class YTDLPConnector:
         logger: Logger,
         info: Info,
         state: State,
-        set_state: Callable[[State, Optional[str]], None],
-        set_info: Callable[[Info, Optional[str]], None],
+        set_state: Callable[[State, str | None], None],
+        set_info: Callable[[Info, str | None], None],
         sub_descargas: Iterable[Descarga_Hija_dict],
         set_entries_to_select: Callable[[Iterable[Descarga_Hija_dict]], None],
         get_selected_entry_ids: Callable[[], Iterable[str]],
@@ -64,13 +63,13 @@ class YTDLPConnector:
         self.handle_requests = handle_requests
         self.get_logs = get_logs
 
-        self.state: Dict[Optional[str], State] = {None: state.copy()}
-        self.info: Dict[Optional[str], Info] = {None: info.copy()}
+        self.state: dict[str | None, State] = {None: state.copy()}
+        self.info: dict[str | None, Info] = {None: info.copy()}
 
-        self.time_start: Dict[Optional[str], float] = {None: time.time()}
+        self.time_start: dict[str | None, float] = {None: time.time()}
 
-        self.state_lock: Dict[Optional[str], Lock] = {None: Lock()}
-        self.info_lock: Dict[Optional[str], Lock] = {None: Lock()}
+        self.state_lock: dict[str | None, Lock] = {None: Lock()}
+        self.info_lock: dict[str | None, Lock] = {None: Lock()}
 
         self._m_state_lock = Lock()
         self._m_info_lock = Lock()
@@ -82,20 +81,20 @@ class YTDLPConnector:
             self.state_lock[sub_id] = Lock()
             self.info_lock[sub_id] = Lock()
 
-    def emit_state(self, sub_id: Optional[str] = None):
+    def emit_state(self, sub_id: str | None = None):
         self._set_state(self.state[sub_id], sub_id)
 
-    def emit_info(self, sub_id: Optional[str] = None):
+    def emit_info(self, sub_id: str | None = None):
         self._set_info(self.info[sub_id], sub_id)
 
-    def _assert_state(self, sub_id: Optional[str]):
+    def _assert_state(self, sub_id: str | None):
         with self._m_state_lock:
             if sub_id not in self.state_lock:
                 self.state_lock[sub_id] = Lock()
             if sub_id not in self.state:
                 self.state[sub_id] = {"value": "pending"}
 
-    def _assert_info(self, sub_id: Optional[str]):
+    def _assert_info(self, sub_id: str | None):
         with self._m_info_lock:
             if sub_id not in self.info_lock:
                 self.info_lock[sub_id] = Lock()
@@ -113,7 +112,7 @@ class YTDLPConnector:
                 }
 
     def _info_hook(
-        self, d: Any, sub_id: Optional[str], emit=True, handle=True, is_first=False
+        self, d: Any, sub_id: str | None, emit=True, handle=True, is_first=False
     ):
         # d es el info_json tanto de progress_hook como de postprocessor_hook
         # completa solo la información faltante
@@ -307,7 +306,7 @@ class YTDLPConnector:
             if emit:
                 self.emit_state(sub_id)
 
-    def _post_hook(self, filepath: Optional[str]):
+    def _post_hook(self, filepath: str | None):
         if not filepath:
             return
         file = Path(filepath).stem
@@ -330,7 +329,7 @@ class YTDLPConnector:
         elif self.info[None]["type"] == "video":
             self._mark_as_completed(None, filepath)
 
-    def _mark_as_completed(self, sub_id: Optional[str], filepath: Optional[str]):
+    def _mark_as_completed(self, sub_id: str | None, filepath: str | None):
         self._assert_state(sub_id)
         self._assert_info(sub_id)
         time_spent = time.time() - self.time_start.setdefault(sub_id, time.time())
@@ -408,14 +407,14 @@ class YTDLPConnector:
                 self.state[None]["time_left"] = "00:00:00"
             self.emit_state(None)
 
-    def _get_last_log_error(self, id: Optional[str]) -> Optional[str]:
+    def _get_last_log_error(self, id: str | None) -> str | None:
         message = "Unknown error"
         for msg in get_logs_messages(self.get_logs(), level="ERROR"):
             if id is None or id in msg:
                 message = msg
         return message
 
-    def _mark_as_failed(self, sub_id: Optional[str]):
+    def _mark_as_failed(self, sub_id: str | None):
         self._assert_state(sub_id)
         with self.state_lock[sub_id]:
             self.state[sub_id]["value"] = "failed"
@@ -428,7 +427,7 @@ class YTDLPConnector:
             self.state[sub_id]["error_message"] = self._get_last_log_error(sub_id)
             self.emit_state(sub_id)
 
-    def download(self, url: Optional[str]):
+    def download(self, url: str | None):
         if not url:
             raise ValueError("URL is required for download")
         # Lazy import to reduce startup time
@@ -455,7 +454,7 @@ class YTDLPConnector:
                 info = ytdlp.extract_info(url, download=False, process=False)
                 if not isinstance(info, dict):
                     self._mark_as_failed(None)
-                    raise ValueError("Failed to extract information")
+                    raise TypeError("Failed to extract information")
                 self.info[None]["type"] = "unknown"
                 self._info_hook(info, None, handle=False, is_first=True)
                 # Inferencia adicional del tipo------------
@@ -509,7 +508,7 @@ class YTDLPConnector:
                         "info": self.info[entry_id],
                         "state": self.state[entry_id],
                     }
-                    for entry_id in self.state.keys()
+                    for entry_id in self.state
                     if entry_id is not None
                     and self.state[entry_id]["value"] != "completed"
                 ]
@@ -526,7 +525,7 @@ class YTDLPConnector:
             self.handle_requests()
             selected_ids = [
                 entry_id
-                for entry_id in self.state.keys()
+                for entry_id in self.state
                 if entry_id is not None and entry_id in self.get_selected_entry_ids()
             ]
             self.state[None]["value"] = "in_progress"
@@ -534,7 +533,7 @@ class YTDLPConnector:
         else:
             selected_ids = [
                 entry_id
-                for entry_id in self.state.keys()
+                for entry_id in self.state
                 if entry_id is not None and self.state[entry_id]["value"] != "completed"
             ]
 
@@ -559,7 +558,7 @@ class YTDLPConnector:
             self.emit_state()
 
         # Descargar ==========================================================================
-        self.options["playlist"] = True if self.info[None]["type"] == "list" else False
+        self.options["playlist"] = self.info[None]["type"] == "list"
         command = options_parser(self.options)
         parsed = parse_options(command)
         ydl_opts = parsed.ydl_opts

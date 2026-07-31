@@ -4,37 +4,39 @@
 # | sin ID -> deltas generales, sin sub_id & conectar siempre que haya descargas activas
 # | id -> sub_deltas de una descarga específica & conectar si esta en pantalla de detalle de una lista y se esta descargando
 
-import time
 import json
-from typing import TypedDict, Tuple, Dict, Optional, List, Generator
-from threading import Lock
+import time
+from collections.abc import Generator
 from logging import Logger
-from tipos import State, Info
+from threading import Lock
+from typing import TypedDict
+
+from tipos import Info, State
 
 
 class Delta(TypedDict):
     id: str
-    sub_id: Optional[str]
-    status: Optional[State]
-    info: Optional[Info]
+    sub_id: str | None
+    status: State | None
+    info: Info | None
 
 
 class Subscriber(TypedDict):
     lock: Lock
     everything: bool
-    id: Optional[str]
-    deltas: Dict[Tuple[str, Optional[str]], Delta]
+    id: str | None
+    deltas: dict[tuple[str, str | None], Delta]
 
 
 # se reciben los updates de los delta si están suscritos a ellos
 class DeltaManager:
-    def __init__(self, logger: Optional[Logger]):
+    def __init__(self, logger: Logger | None):
         self.logger = logger
         self.lock = Lock()
-        self.subscribers: List[Subscriber] = []
+        self.subscribers: list[Subscriber] = []
 
     def subscribe(
-        self, id: Optional[str], everything: bool = False
+        self, id: str | None, everything: bool = False
     ) -> Generator[str, None, None]:
         with self.lock:
             subscriber = Subscriber(
@@ -65,7 +67,7 @@ class DeltaManager:
             if self.logger:
                 self.logger.error(f"Error en subscribe: {e}")
 
-    def update_status(self, id: str, sub_id: Optional[str], status: State):
+    def update_status(self, id: str, sub_id: str | None, status: State):
         with self.lock:
             subscribers_snapshot = list(self.subscribers)
         for subscriber in subscribers_snapshot:
@@ -91,7 +93,7 @@ class DeltaManager:
                             "info": None,
                         }
 
-    def update_info(self, id: str, sub_id: Optional[str], info: Info):
+    def update_info(self, id: str, sub_id: str | None, info: Info):
         with self.lock:
             subscribers_snapshot = list(self.subscribers)
         for subscriber in subscribers_snapshot:

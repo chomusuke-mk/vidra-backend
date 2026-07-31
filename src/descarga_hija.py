@@ -1,5 +1,6 @@
+from typing import TypedDict
+
 from tipos import Info, State
-from typing import Dict, TypedDict
 
 
 class Descarga_Hija_dict(TypedDict):
@@ -31,7 +32,7 @@ class Descarga_Hija:
         }
 
     @staticmethod
-    def from_dict(data: Dict):
+    def from_dict(data: dict):
         return Descarga_Hija(
             sub_id=data["sub_id"],
             parent_id=data["parent_id"],

@@ -1,9 +1,9 @@
-from threading import Lock
-import logging
 import io
+import logging
 import os
-from typing import Tuple, Any, Optional, List, Literal
 import re
+from threading import Lock
+from typing import Any, Literal
 
 
 class StringIOHandler(logging.Handler):
@@ -33,7 +33,7 @@ class SinColoresFormatter(logging.Formatter):
 
 def configure_logger(
     log_file: str, logger_name: str
-) -> Tuple[logging.Logger, io.StringIO]:
+) -> tuple[logging.Logger, io.StringIO]:
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     if os.path.exists(log_file):
         with open(log_file, "r", encoding="utf-8") as f:
@@ -55,22 +55,25 @@ def configure_logger(
     logger.addHandler(log_stream_handler)
     return logger, log_stream
 
+
 def close_logger(logger: logging.Logger):
     handlers = logger.handlers[:]
     for handler in handlers:
         handler.close()
         logger.removeHandler(handler)
 
-def clean_string(value: Any) -> Optional[str]:
+
+def clean_string(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text or ""
 
+
 def get_logs_messages(
     logs: str,
-    level: Optional[Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]] = None,
-) -> List[str]:
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | None = None,
+) -> list[str]:
     if not logs:
         return []
     lines = logs.split("\n")
@@ -84,7 +87,7 @@ def get_logs_messages(
     return lines
 
 
-def to_int(value: Any) -> Optional[int]:
+def to_int(value: Any) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -104,7 +107,7 @@ def to_int(value: Any) -> Optional[int]:
     return None
 
 
-def to_float(value: Any) -> Optional[float]:
+def to_float(value: Any) -> float | None:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -122,7 +125,7 @@ def to_float(value: Any) -> Optional[float]:
     return None
 
 
-def to_bool(value: Any) -> Optional[bool]:
+def to_bool(value: Any) -> bool | None:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -138,7 +141,7 @@ def to_bool(value: Any) -> Optional[bool]:
     return None
 
 
-def bytes_to_human_readable(num_bytes: Optional[int | float], suffix: str = "") -> str:
+def bytes_to_human_readable(num_bytes: float | None, suffix: str = "") -> str:
     if num_bytes is None:
         return "--"
 
@@ -155,7 +158,8 @@ def bytes_to_human_readable(num_bytes: Optional[int | float], suffix: str = "") 
     # Si el archivo es ridículamente grande (más de 1024 PB), se queda en PB
     return f"{num_bytes:.0f}PB{suffix}"
 
-def seconds_to_human_readable(seconds: Optional[int | float]) -> str:
+
+def seconds_to_human_readable(seconds: float | None) -> str:
     if seconds is None:
         return "--"
 

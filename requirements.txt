@@ -15,3 +15,5 @@ tldextract
 
 yt-dlp
 yt-dlp-ejs
+types-waitress
+types-yt-dlp

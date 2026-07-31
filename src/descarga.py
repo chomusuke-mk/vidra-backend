@@ -1,16 +1,18 @@
-from typing import Any, Dict, Iterable, List, Optional, TypeGuard
+import io
 import os
 import shutil
-import io
+import traceback
+from collections.abc import Iterable
 from logging import Logger
-from threading import Lock, Event
-from utils import configure_logger, close_logger
-from tipos import DownloadDeleted, State, Info, DownloadCancelled, DownloadPaused
+from threading import Event, Lock
+from typing import Any, TypeGuard
+
+from delta import DeltaManager
+from descarga_hija import Descarga_Hija, Descarga_Hija_dict
+from tipos import DownloadCancelled, DownloadDeleted, DownloadPaused, Info, State
+from utils import close_logger, configure_logger
 from yt_dlp_connector import YTDLPConnector
 from yt_dlp_parser_types import VidraOptions
-from delta import DeltaManager
-import traceback
-from descarga_hija import Descarga_Hija, Descarga_Hija_dict
 
 
 class Descarga:
@@ -20,7 +22,7 @@ class Descarga:
         info: Info,
         state: State,
         options: VidraOptions,
-        sub_descargas: List[Dict],
+        sub_descargas: list[dict],
         logs_path: str,
         temp_path: str,
         ffmpeg_path: str,
@@ -47,9 +49,9 @@ class Descarga:
         # Dynamic properties
         self._delta_manager = delta_manager
         self._log_file = os.path.join(logs_path, f"{self.id}.log")
-        self._logger: Optional[Logger] = None
-        self._log_stream: Optional[io.StringIO] = None
-        self.sub_descargas: List[Descarga_Hija] = []
+        self._logger: Logger | None = None
+        self._log_stream: io.StringIO | None = None
+        self.sub_descargas: list[Descarga_Hija] = []
         for d in sub_descargas:
             descarga_hija = Descarga_Hija.from_dict(d)
             if descarga_hija.state["value"] != "deleted":
@@ -57,9 +59,9 @@ class Descarga:
         self._lock = Lock()
         # Lista de ID's de elementos de playlist a descargar
         self._select_entries_event = Event()
-        self._selected_entry_ids: Optional[List[str]] = None
+        self._selected_entry_ids: list[str] | None = None
         # Lista de sub_descargas que esperan selección de entradas
-        self._entries_to_select: Optional[List[Descarga_Hija_dict]] = None
+        self._entries_to_select: list[Descarga_Hija_dict] | None = None
 
         # Flags de control de la descarga
         self._download_in_progress = False
@@ -67,7 +69,7 @@ class Descarga:
         self.cancel_requested = False
         self.delete_requested = False
 
-    def _get_selected_entry_ids(self) -> List[str]:
+    def _get_selected_entry_ids(self) -> list[str]:
         if self.state["value"] != "awaiting_selection":
             raise ValueError(
                 "No se pueden obtener las entradas seleccionadas si no se esta esperando una selección"
@@ -87,7 +89,7 @@ class Descarga:
         self._select_entries_event.set()
 
     @property
-    def entries_to_select(self) -> List[Descarga_Hija_dict]:
+    def entries_to_select(self) -> list[Descarga_Hija_dict]:
         if self.state["value"] != "awaiting_selection":
             raise ValueError(
                 "No se pueden obtener las entradas si no se esta esperando una selección"
@@ -142,7 +144,7 @@ class Descarga:
 
     @staticmethod
     def from_dict(
-        data: Dict,
+        data: dict,
         logs_path: str,
         temp_path: str,
         ffmpeg_path: str,
@@ -162,12 +164,12 @@ class Descarga:
             delta_manager=delta_manager,
         )
 
-    def _set_state(self, state: State, sub_id: Optional[str]):
+    def _set_state(self, state: State, sub_id: str | None):
         if sub_id is None:
             self.state = state
         else:
             with self._lock:
-                sub_descarga: Optional[Descarga_Hija] = next(
+                sub_descarga: Descarga_Hija | None = next(
                     (d for d in self.sub_descargas if d.sub_id == sub_id), None
                 )
                 if sub_descarga is not None and state["value"] == "deleted":
@@ -194,12 +196,12 @@ class Descarga:
                 sub_descarga.state = state
         self._delta_manager.update_status(self.id, sub_id, state)
 
-    def _set_info(self, info: Info, sub_id: Optional[str]):
+    def _set_info(self, info: Info, sub_id: str | None):
         if sub_id is None:
             self.info = info
         else:
             with self._lock:
-                sub_descarga: Optional[Descarga_Hija] = next(
+                sub_descarga: Descarga_Hija | None = next(
                     (d for d in self.sub_descargas if d.sub_id == sub_id), None
                 )
                 if sub_descarga is None:
@@ -267,16 +269,13 @@ class Descarga:
         except DownloadDeleted:
             self._eliminar_descarga()
         except Exception as e:
+            error_message = self.state.get("error_message") or ""
             self._set_state(
                 {
                     **self.state,
                     "value": "failed",
                     "sub_state": str(e)[:50]
-                    + (
-                        " : " + self.state["error_message"]
-                        if "error_message" in self.state and self.state["error_message"]
-                        else ""
-                    ),
+                    + (" : " + error_message if error_message else ""),
                     "progress_color": "red",
                     "sub_state_color": "red",
                 },

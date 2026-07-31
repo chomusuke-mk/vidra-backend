@@ -1,6 +1,5 @@
-from typing import TypedDict, Literal, Optional, NotRequired, Any
 import logging
-
+from typing import Any, Literal, NotRequired, TypedDict
 
 type Color = Literal[
     "green",  # completado
@@ -22,8 +21,10 @@ class DownloadCancelled(Exception):
 class DownloadPaused(Exception):
     """Excepción personalizada para indicar que la descarga ha sido pausada"""
 
+
 class DownloadDeleted(Exception):
     """Excepción personalizada para indicar que la descarga ha sido eliminada"""
+
 
 class YTDLPLoggerAdapter:
     """
@@ -32,7 +33,7 @@ class YTDLPLoggerAdapter:
     """
 
     def __init__(
-        self, ydl: Optional[Any] = None, logger: Optional[logging.Logger] = None
+        self, ydl: Any | None = None, logger: logging.Logger | None = None
     ) -> None:
         self.logger = logger
 
@@ -84,30 +85,30 @@ class State(TypedDict):
         "deleting",
     ]
     # sub_state de yt-dlp y "Getting Info", "Collecting Entries"
-    sub_state: NotRequired[Optional[str]]
-    sub_state_color: NotRequired[Optional[Color]]
+    sub_state: NotRequired[str | None]
+    sub_state_color: NotRequired[Color | None]
     # para un video progress es un string con 4.3MB/5MB, para una lista es un string con "x/y"
-    progress_label: NotRequired[Optional[str]]
+    progress_label: NotRequired[str | None]
     # `progress_value` número entre 0 y 1 que representa el progreso,
     # para un video es el porcentaje dividido por 100,
     # para una lista es el número de videos descargados dividido por el total
-    progress_value: NotRequired[Optional[float]]
-    progress_color: NotRequired[Optional[Color]]
+    progress_value: NotRequired[float | None]
+    progress_color: NotRequired[Color | None]
     # para un video speed es un string con la velocidad MB/s KB/s, para una lista es un string con "x"e/s
-    speed: NotRequired[Optional[str]]
-    time_spent: NotRequired[Optional[str]]
-    time_total: NotRequired[Optional[str]]
-    time_left: NotRequired[Optional[str]]
-    error_message: NotRequired[Optional[str]]
+    speed: NotRequired[str | None]
+    time_spent: NotRequired[str | None]
+    time_total: NotRequired[str | None]
+    time_left: NotRequired[str | None]
+    error_message: NotRequired[str | None]
 
 
 class Info(TypedDict):
-    url: Optional[str]
-    image: Optional[str]
-    file: Optional[str]
-    title: Optional[str]
-    platform: Optional[str]
+    url: str | None
+    image: str | None
+    file: str | None
+    title: str | None
+    platform: str | None
     type: Literal["video", "list", "unknown"]
-    autor: Optional[str]
-    creation_date: Optional[str]
-    duration: Optional[str]
+    autor: str | None
+    creation_date: str | None
+    duration: str | None

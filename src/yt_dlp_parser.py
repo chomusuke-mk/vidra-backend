@@ -1,12 +1,11 @@
 from typing import (
-    List,
-    cast,
     Final,
+    cast,
 )
 
 from yt_dlp_parser_types import (
-    VidraOptions,
     OUTPUT_TEMPLATE_VARIABLES,
+    VidraOptions,
 )
 
 DEFAULT_OPTIONS: Final[VidraOptions] = {
@@ -85,7 +84,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
 }
 
 
-def options_parser(options: VidraOptions) -> List[str]:
+def options_parser(options: VidraOptions) -> list[str]:
     # set default values for missing options
     for key, value in DEFAULT_OPTIONS.items():
         options.setdefault(key, value)  # type: ignore
@@ -251,7 +250,7 @@ def options_parser(options: VidraOptions) -> List[str]:
 
     format = cast(str, format)
     format = [f.split("+") for f in format.split("/") if f.strip()]
-    format = format if format else cast(List[List[str]], [])
+    format = format if format else cast(list[list[str]], [])
 
     def parse_video_resolution(video: str):
         if video == "bestvideo" or video == "default":
@@ -506,5 +505,5 @@ def options_parser(options: VidraOptions) -> List[str]:
         comando.append("--windows-filenames")
     for part in comando:
         if isinstance(part, (list, tuple, set)):
-            raise ValueError(f"Invalid command part: {part}")
+            raise TypeError(f"Invalid command part: {part}")
     return comando
