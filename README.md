@@ -111,7 +111,7 @@ Inicia una nueva descarga.
   ```json
   {
     "message": "Download added successfully",
-    "id": "abc-123-xyz"
+    "id": "abc-123-xy3z"
   }
   ```
 
