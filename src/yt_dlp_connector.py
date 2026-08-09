@@ -430,6 +430,9 @@ class YTDLPConnector:
     def download(self, url: str | None):
         if not url:
             raise ValueError("URL is required for download")
+        self._assert_state(None)
+        self.state[None]["value"] = "in_progress"
+        self.emit_state()
         # Lazy import to reduce startup time
         from yt_dlp import YoutubeDL, parse_options
 
@@ -444,7 +447,6 @@ class YTDLPConnector:
             ydl_opts["progress_hooks"] = []
             ydl_opts["postprocessor_hooks"] = []
             ydl_opts["post_hooks"] = []
-            self._assert_state(None)
             self.state[None]["value"] = "in_progress"
             self.state[None]["sub_state"] = "Extracting Information"
             self.state[None]["sub_state_color"] = "cyan"
