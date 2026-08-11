@@ -52,7 +52,7 @@ class DeltaManager:
                     yield f"data: {json.dumps(deltas)}\n\n"
                 else:
                     yield ": ping (keep-alive)\n\n"
-                time.sleep(1)  # para evitar busy waiting
+                time.sleep(0.5)  # para evitar busy waiting
         except GeneratorExit:
             # el cliente se desconectó, limpiamos las suscripciones
             with self.lock:
