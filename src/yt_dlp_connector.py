@@ -584,7 +584,7 @@ class YTDLPConnector:
             self.time_start[None] = time.time()
             self.emit_state()
             self.handle_requests()
-            error_code = 0
+            error_code = 1
 
             def run_download():
                 try:
