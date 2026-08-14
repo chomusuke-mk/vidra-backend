@@ -339,7 +339,14 @@ class Descarga:
                 or sub_descarga.state["value"] == "pausing"
             ):
                 self._set_state(
-                    {**sub_descarga.state, "value": "paused"}, sub_descarga.sub_id
+                    {
+                        **sub_descarga.state,
+                        "value": "paused",
+                        "progress_color": "yellow",
+                        "sub_state_color": "yellow",
+                        "sub_state": "Paused",
+                    },
+                    sub_descarga.sub_id,
                 )
         if self._logger:
             self._logger.info(f"Descarga {self.id} pausada")
@@ -349,13 +356,15 @@ class Descarga:
         with self._lock:
             if (
                 self.state["value"] != "in_progress"
+                and self.state["value"] != "requested"
                 and self.state["value"] != "pending"
+                and self.state["value"] != "awaiting_selection"
                 and self.state["value"] != "paused"
                 and self.state["value"] != "cancelling"
             ):
                 raise ValueError(
-                    f"No se puede cancelar la descarga {self.id} si no esta en estado 'requested', ",
-                    "'pending', 'extracting_information', 'awaiting_selection' o 'paused'",
+                    f"No se puede cancelar la descarga {self.id} si no esta en estado 'in_progress', 'requested', ",
+                    "'pending', 'awaiting_selection' o 'paused'",
                 )
             if self.cancel_requested:
                 raise ValueError(f"La descarga {self.id} ya esta siendo cancelada")
@@ -413,7 +422,6 @@ class Descarga:
             if (
                 self.state["value"] != "requested"
                 and self.state["value"] != "pending"
-                and self.state["value"] != "extracting_information"
                 and self.state["value"] != "awaiting_selection"
                 and self.state["value"] != "in_progress"
                 and self.state["value"] != "completed"
@@ -425,7 +433,7 @@ class Descarga:
             ):
                 raise ValueError(
                     f"No se puede eliminar la descarga {self.id} si no esta en estado 'requested', ",
-                    "'pending', 'extracting_information', 'awaiting_selection', 'in_progress', ",
+                    "'pending', 'awaiting_selection', 'in_progress', ",
                     "'completed', 'completed_with_errors', 'failed', 'cancelled' o 'paused'",
                 )
             if self.cancel_requested:

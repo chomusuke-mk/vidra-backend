@@ -11,7 +11,7 @@ import time
 from collections.abc import Callable, Iterable
 from logging import Logger
 from pathlib import Path
-from threading import Event, Lock
+from threading import Event, Lock, Thread
 from typing import (
     Any,
 )
@@ -431,7 +431,11 @@ class YTDLPConnector:
         if not url:
             raise ValueError("URL is required for download")
         self._assert_state(None)
-        self.state[None]["value"] = "in_progress"
+        self.state[None] = {
+            "value": "in_progress",
+            "progress_color": "cyan",
+            "sub_state_color": "cyan",
+        }
         self.emit_state()
         # Lazy import to reduce startup time
         from yt_dlp import YoutubeDL, parse_options
@@ -524,7 +528,6 @@ class YTDLPConnector:
             # Esperar a que el usuario seleccione las entradas a descargar
             self.event.wait()
             # Obtener las entradas seleccionadas
-            self.handle_requests()
             selected_ids = [
                 entry_id
                 for entry_id in self.state
@@ -545,7 +548,11 @@ class YTDLPConnector:
             for id in selected_ids:
                 self._assert_state(id)
                 self._assert_info(id)
-                self.state[id]["value"] = "pending"
+                self.state[id] = {
+                    "value": "pending",
+                    "progress_color": "magenta",
+                    "sub_state_color": "magenta",
+                }
                 self.emit_state(id)
                 self.emit_info(id)
             self.options["playlist_ids"] = selected_ids
@@ -577,13 +584,28 @@ class YTDLPConnector:
             self.time_start[None] = time.time()
             self.emit_state()
             self.handle_requests()
-            error_code = ytdlp.download(url)
+            error_code = 0
+
+            def run_download():
+                try:
+                    global error_code
+                    error_code = ytdlp.download(url)
+                except Exception as e:
+                    self.logger.error(f"Download failed: {e}")
+                    error_code = 1  # Non-zero error code indicates failure
+
+            thread = Thread(target=run_download)
+            thread.start()
+            while thread.is_alive():
+                self.handle_requests()
+                time.sleep(0.5)
+            thread.join()
             self.handle_requests()
 
             for sub_id, state in self.state.items():
                 if sub_id is None:
                     continue
-                if state["value"] == "pending" or state["value"] == "in_progress":
+                if state["value"] == "in_progress" or (state["value"] == "pending" and sub_id in selected_ids):
                     if not error_code:
                         self._mark_as_completed(sub_id, None)
                     else:

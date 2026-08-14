@@ -54,7 +54,6 @@ class App:
                 d.pausar_descarga()
             elif (
                 d.state["value"] == "requested"
-                or d.state["value"] == "extracting_information"
                 or d.state["value"] == "awaiting_selection"
                 or d.state["value"] == "deleting"
             ):
@@ -91,6 +90,12 @@ class App:
                     state TEXT,
                     PRIMARY KEY (sub_id, parent_id),
                     FOREIGN KEY(parent_id) REFERENCES descargas(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS counters (
+                    counter_name TEXT PRIMARY KEY,
+                    current_value INTEGER DEFAULT 0
                 )
             """)
 
@@ -392,11 +397,37 @@ class App:
                 ][::-1],  # mostrar primero las sub-descargas mas recientes
             }
 
+    def _get_next_id(self, current_max_id: int) -> int:
+        """Obtiene el siguiente ID único para una nueva descarga."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO counters (counter_name, current_value)
+                VALUES (?, ?)
+                ON CONFLICT(counter_name) DO UPDATE SET
+                    current_value = CASE
+                        WHEN counters.current_value + 1 >= ? + 1 THEN counters.current_value + 1
+                        ELSE ? + 1
+                    END
+                """,
+                ("descarga_id", current_max_id + 1, current_max_id, current_max_id),
+            )
+            conn.commit()
+            cursor.execute(
+                "SELECT current_value FROM counters WHERE counter_name = ?",
+                ("descarga_id",),
+            )
+            next_id = cursor.fetchone()[0]
+        return next_id
+
     def add_download(self, url: str, options: dict):
         if not is_valid_options(options):
             raise ValueError("Opciones de descarga no válidas")
         with self.lock:
-            descarga_id = str(max([int(d.id) for d in self.descargas], default=0) + 1)
+            descarga_id = str(
+                self._get_next_id(max((int(d.id) for d in self.descargas), default=0))
+            )
         descarga = Descarga(
             id=descarga_id,
             info={
@@ -484,7 +515,6 @@ class App:
                 d.pausar_descarga()
             elif (
                 d.state["value"] == "requested"
-                or d.state["value"] == "extracting_information"
                 or d.state["value"] == "awaiting_selection"
             ):
                 d.eliminar_descarga()

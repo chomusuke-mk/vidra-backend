@@ -10,7 +10,7 @@ type Color = Literal[
     "orange",  # error parcial
     "purple",  # esperando selección
     "cyan",  # extrayendo información
-    "magenta",  # requested
+    "magenta",  # pending
 ]
 
 
