@@ -11,8 +11,8 @@ from delta import DeltaManager
 from descarga_hija import Descarga_Hija, Descarga_Hija_dict
 from tipos import DownloadCancelled, DownloadDeleted, DownloadPaused, Info, State
 from utils import close_logger, configure_logger
-from yt_dlp_connector import YTDLPConnector
-from yt_dlp_parser_types import VidraOptions
+from vidra_yt_dlp_connector import YTDLPConnector
+from vidra_yt_dlp_parser_types import VidraOptions
 
 
 class Descarga:

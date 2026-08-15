@@ -48,6 +48,7 @@ try:
     from flask import Flask, Response, jsonify, request
 
     from app import App
+    from ota_manager import OTAManager
 
     # --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
     ENV = os.environ.get("APP_ENV", "development")
@@ -58,6 +59,10 @@ try:
     FFMPEG_PATH = os.path.abspath(os.environ.get("FFMPEG_PATH", "./temp/ffmpeg"))
     QUICKJS_PATH = os.path.abspath(os.environ.get("QUICKJS_PATH", "./temp/quickjs"))
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+    CORE_MODULES_PATH = os.path.abspath(
+        os.environ.get("CORE_MODULES_PATH", "./temp/core_modules")
+    )
 
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))
@@ -92,6 +97,7 @@ try:
 
     # --- INICIALIZACIÓN DEL SERVIDOR Y APLICACIÓN ---
     server = Flask(__name__)
+    ota_manager = OTAManager(CORE_MODULES_PATH)
 
     # 2. CONFIGURAR FLASK
     if ENV == "production":
@@ -126,12 +132,26 @@ try:
     @server.route("/", methods=["GET"])
     @token_required
     def health_check():
-        return jsonify({"status": "ok"})
+        return jsonify(
+            {
+                "status": "ok"
+                if ota_manager.get_status() == "load"
+                else ota_manager.get_status()
+            }
+        )
 
-    @server.route("/shutdown", methods=["POST"])
+    @server.route("/ota", methods=["PATCH"])
     @token_required
-    def shutdown():
-        return jsonify({"message": "Shutting down..."})
+    def ota_control():
+        action = (request.args.get("action") or "").lower().strip()
+        if action != "load" and action != "unload":
+            return jsonify({"error": "Invalid action, must be 'load' or 'unload'"}), 400
+        if action == "load":
+            ota_manager.load()
+        elif action == "unload":
+            app.stop_running_downloads()
+            ota_manager.unload()
+        return jsonify({"message": "OTA control applied."}), 200
 
     @server.route("/favicon.ico")
     @token_required
@@ -261,6 +281,8 @@ try:
 
         print(f"Iniciando Waitress en {HOST}:{PORT} con 16 hilos...")
         serve(server, host=HOST, port=PORT, threads=16)
+    ota_manager.snapshot()
+    ota_manager.load()
 
 except Exception:
     # Si cualquier cosa falla (ej: módulo no encontrado), lo mandamos al archivo log antes de morir.

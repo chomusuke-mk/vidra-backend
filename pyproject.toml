@@ -1,2 +1,5 @@
 [tool.ruff]
 ignore = ["BLE001"]
+
+[tool.mypy]
+ignore_missing_imports = true

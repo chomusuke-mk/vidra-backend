@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from descarga import DeltaManager, Descarga, Descarga_Hija
 from utils import close_logger, configure_logger
-from yt_dlp_parser_types import is_valid_options
+from vidra_yt_dlp_parser_types import is_valid_options
 
 
 class App:
@@ -503,6 +503,22 @@ class App:
     def subscribe_to_deltas(self, id: str | None, everything: bool):
         return self.delta_manager.subscribe(id=id, everything=everything)
 
+    def stop_running_downloads(self):
+        """Detiene todas las descargas en progreso de forma segura."""
+        with self.lock:
+            for d in self.descargas:
+                try:
+                    if d.state["value"] == "in_progress":
+                        d.pausar_descarga()
+
+                    elif (
+                        d.state["value"] == "requested"
+                        or d.state["value"] == "awaiting_selection"
+                    ):
+                        d.eliminar_descarga()
+                except Exception as _:
+                    print(f"Error al detener la descarga {d.id}: {_}")
+
     def shutdown(self):
         """Detiene el hilo guardián de forma segura."""
         if self._shutdown_called:
@@ -510,14 +526,7 @@ class App:
         self._shutdown_called = True
         print("Gracefully shutting down...\n\n")
         self._stop_event.set()
-        for d in self.descargas:
-            if d.state["value"] == "in_progress":
-                d.pausar_descarga()
-            elif (
-                d.state["value"] == "requested"
-                or d.state["value"] == "awaiting_selection"
-            ):
-                d.eliminar_descarga()
+        self.stop_running_downloads()
         if self._db_thread.is_alive():
             self._db_thread.join()
         self._save_state()

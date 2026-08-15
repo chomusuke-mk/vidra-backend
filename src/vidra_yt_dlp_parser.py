@@ -3,7 +3,7 @@ from typing import (
     cast,
 )
 
-from yt_dlp_parser_types import (
+from vidra_yt_dlp_parser_types import (
     OUTPUT_TEMPLATE_VARIABLES,
     VidraOptions,
 )

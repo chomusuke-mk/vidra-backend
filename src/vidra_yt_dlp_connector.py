@@ -28,8 +28,8 @@ from utils import (
     to_float,
     to_int,
 )
-from yt_dlp_parser import options_parser
-from yt_dlp_parser_types import VidraOptions
+from vidra_yt_dlp_parser import options_parser
+from vidra_yt_dlp_parser_types import VidraOptions
 
 
 class YTDLPConnector:
