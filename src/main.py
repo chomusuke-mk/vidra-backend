@@ -37,13 +37,11 @@ sys.stderr = sys.stdout
 # 1. EJECUCIÓN PRINCIPAL ENVUELTA EN TRY-EXCEPT
 # =============================================================================
 try:
-    print("\n" + "=" * 50)
-    print("Iniciando entorno Python (Caja Negra activada)...")
-    print("=" * 50)
-    import _thread
+    print("\n" + "=" * 10)
+    print("Iniciando entorno Python")
+    print("-" * 10)
     import logging
     import os
-    import threading
     from functools import wraps
 
     import certifi
@@ -133,20 +131,7 @@ try:
     @server.route("/shutdown", methods=["POST"])
     @token_required
     def shutdown():
-        try:
-            # Llamamos al apagado síncrono de tu aplicación para guardar BD
-            app.shutdown()
-
-            def kill_server():
-                # NO TOCAR: ESTE HACK PERMITE REINICIAR SERIOUS_PYTHON EN CALIENTE
-                _thread.interrupt_main()
-
-            # Damos medio segundo para que Flask alcance a devolver la respuesta HTTP 200 a Flutter
-            threading.Timer(0.5, kill_server).start()
-
-            return jsonify({"message": "Shutting down..."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        return jsonify({"message": "Shutting down..."})
 
     @server.route("/favicon.ico")
     @token_required
@@ -288,4 +273,3 @@ finally:
     sys.stderr = os.devnull
     sys.stdout.close()
     sys.stdout = os.devnull
-    _thread.interrupt_main()

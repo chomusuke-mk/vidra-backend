@@ -269,13 +269,13 @@ class Descarga:
         except DownloadDeleted:
             self._eliminar_descarga()
         except Exception as e:
-            error_message = self.state.get("error_message") or ""
+            error_message = self.state.get("error_message") or str(e)
             self._set_state(
                 {
                     **self.state,
                     "value": "failed",
-                    "sub_state": str(e)[:50]
-                    + (" : " + error_message if error_message else ""),
+                    "sub_state": "Error",
+                    "error_message": error_message,
                     "progress_color": "red",
                     "sub_state_color": "red",
                 },

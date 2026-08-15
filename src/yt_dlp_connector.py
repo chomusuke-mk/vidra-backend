@@ -6,12 +6,13 @@ this module accept plain dictionaries/lists and optional hooks so callers can
 re-use their existing handlers without dealing with yt-dlp specific details.
 """
 
+import json
 import os
 import time
 from collections.abc import Callable, Iterable
 from logging import Logger
 from pathlib import Path
-from threading import Event, Lock, Thread
+from threading import Event, Lock
 from typing import (
     Any,
 )
@@ -60,7 +61,7 @@ class YTDLPConnector:
         self._set_entries_to_select = set_entries_to_select
         self.get_selected_entry_ids = get_selected_entry_ids
         self.event = select_entries_event
-        self.handle_requests = handle_requests
+        self._handle_requests = handle_requests
         self.get_logs = get_logs
 
         self.state: dict[str | None, State] = {None: state.copy()}
@@ -80,6 +81,15 @@ class YTDLPConnector:
             self.info[sub_id] = d["info"].copy()
             self.state_lock[sub_id] = Lock()
             self.info_lock[sub_id] = Lock()
+
+    def handle_requests(self):
+        try:
+            self._handle_requests()
+        except Exception:
+            if hasattr(self, "_current_ytdlp") and self._current_ytdlp is not None:
+                self.logger.warning("cerrando ytdlp por excepción en handle_requests")
+                self._current_ytdlp.close()
+            raise
 
     def emit_state(self, sub_id: str | None = None):
         self._set_state(self.state[sub_id], sub_id)
@@ -408,7 +418,7 @@ class YTDLPConnector:
             self.emit_state(None)
 
     def _get_last_log_error(self, id: str | None) -> str | None:
-        message = "Unknown error"
+        message = None
         for msg in get_logs_messages(self.get_logs(), level="ERROR"):
             if id is None or id in msg:
                 message = msg
@@ -437,6 +447,8 @@ class YTDLPConnector:
             "sub_state_color": "cyan",
         }
         self.emit_state()
+        temp_path = self.options.get("paths", {}).get("temp") or ""
+        info_file = os.path.join(temp_path, f"{self.id}_info.json")
         # Lazy import to reduce startup time
         from yt_dlp import YoutubeDL, parse_options
 
@@ -472,11 +484,14 @@ class YTDLPConnector:
                         self._info_hook(info, None, handle=False, is_first=True)
                     if self.info[None]["type"] == "unknown":
                         self.info[None]["type"] = "video"
+
                 # Procesar entradas -------------------------------------------
                 entries: Iterable = []
+                materialized_entries: list = []
                 if self.info[None]["type"] == "list":
                     if "entries" in info and isinstance(info["entries"], Iterable):
                         entries = info["entries"]
+                        info["entries"] = materialized_entries
                         self.state[None]["sub_state"] = "Collecting Entries"
                     else:
                         self._mark_as_failed(None)
@@ -494,6 +509,7 @@ class YTDLPConnector:
                         self._info_hook(entry, entry["id"], emit=False, handle=False)
                         self._assert_state(entry["id"])
                         self.state[entry["id"]]["value"] = "requested"
+                    materialized_entries.append(entry)
 
                     self.state[None]["progress_label"] = (
                         f"{index + 1}/{total if total is not None else '?'}"
@@ -502,6 +518,11 @@ class YTDLPConnector:
                         (index + 1) / total if total is not None and total > 0 else None
                     )
                     self.emit_state()
+                # Guardar info extraída ------
+                clean_info = ytdlp.sanitize_info(info)
+                with open(info_file, "w", encoding="utf-8") as f:
+                    json.dump(clean_info, f, separators=(",", ":"), ensure_ascii=False)
+                    f.flush()
         # Manejar selección de entradas ======================================================
         selected_ids: Iterable[str]
         if sum(1 for v in self.state.values() if v["value"] != "completed") > 2:
@@ -558,7 +579,6 @@ class YTDLPConnector:
             self.options["playlist_ids"] = selected_ids
             download_archive = self.options.get("download_archive")
             if not download_archive:
-                temp_path = self.options.get("paths", {}).get("temp") or ""
                 self.options["download_archive"] = os.path.join(
                     temp_path, f"{self.id}_download_archive.txt"
                 )
@@ -575,6 +595,7 @@ class YTDLPConnector:
         ydl_opts["progress_hooks"] = [self._progress_hook]
         ydl_opts["postprocessor_hooks"] = [self._postprocessor_hook]
         ydl_opts["post_hooks"] = [self._post_hook]
+        ydl_opts["clean_infojson"] = False  # Evita que se elimine el campo 'entries'
         with YoutubeDL(ydl_opts) as ytdlp:
             self.logger.info(f"Starting download of {url}")
             self.state[None]["value"] = "in_progress"
@@ -584,28 +605,23 @@ class YTDLPConnector:
             self.time_start[None] = time.time()
             self.emit_state()
             self.handle_requests()
-            error_code = 1
-
-            def run_download():
-                try:
-                    global error_code
-                    error_code = ytdlp.download(url)
-                except Exception as e:
-                    self.logger.error(f"Download failed: {e}")
-                    error_code = 1  # Non-zero error code indicates failure
-
-            thread = Thread(target=run_download)
-            thread.start()
-            while thread.is_alive():
-                self.handle_requests()
-                time.sleep(0.5)
-            thread.join()
+            self._current_ytdlp = ytdlp
+            if os.path.exists(info_file):
+                error_code = ytdlp.download_with_info_file(info_file)
+            else:
+                self.logger.warning(
+                    f"Info file {info_file} not found, downloading without it"
+                )
+                error_code = ytdlp.download([url])
+            del self._current_ytdlp
             self.handle_requests()
 
             for sub_id, state in self.state.items():
                 if sub_id is None:
                     continue
-                if state["value"] == "in_progress" or (state["value"] == "pending" and sub_id in selected_ids):
+                if state["value"] == "in_progress" or (
+                    state["value"] == "pending" and sub_id in selected_ids
+                ):
                     if not error_code:
                         self._mark_as_completed(sub_id, None)
                     else:
