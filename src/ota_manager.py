@@ -50,7 +50,7 @@ class OTAManager:
             self._snapshot_meta_path = list(sys.meta_path)
             self._has_snapshot = True
             self._status = "unload"
-            print("OTA snapshot captured: %d modules.", len(self._snapshot_modules))
+            print(f"OTA snapshot captured: {len(self._snapshot_modules)} modules.")
 
     def _require_snapshot(self) -> None:
         """Raises RuntimeError if snapshot() has not been called."""
@@ -91,17 +91,13 @@ class OTAManager:
             has_ydl = os.path.isdir(os.path.join(self.ota_path, "yt_dlp"))
             has_ejs = os.path.isdir(os.path.join(self.ota_path, "yt_dlp_ejs"))
             if not (has_ydl and has_ejs):
-                print("yt_dlp or yt_dlp_ejs not found in %s", self.ota_path)
+                print(f"yt_dlp or yt_dlp_ejs not found in {self.ota_path}")
                 # Remove the path we just added
                 if self.ota_path in sys.path:
                     sys.path.remove(self.ota_path)
                 return False
 
             importlib.invalidate_caches()
-
-            # Import (assumed to succeed per contract)
-            import yt_dlp  # noqa: F401
-            import yt_dlp_ejs  # noqa: F401
 
             self._status = "load"
             print("OTA load succeeded.")

@@ -41,14 +41,10 @@ try:
     print("Iniciando entorno Python")
     print("-" * 10)
     import logging
-    import os
+    import threading
     from functools import wraps
 
     import certifi
-    from flask import Flask, Response, jsonify, request
-
-    from app import App
-    from ota_manager import OTAManager
 
     # --- 1. OBTENER VARIABLES DEL ENTORNO (INYECCIÓN DEL CONTENEDOR PADRE) ---
     ENV = os.environ.get("APP_ENV", "development")
@@ -96,6 +92,11 @@ try:
     print("Current LOG_LEVEL:", LOG_LEVEL)
 
     # --- INICIALIZACIÓN DEL SERVIDOR Y APLICACIÓN ---
+    from flask import Flask, Response, jsonify, request
+
+    from app import App
+    from ota_manager import OTAManager
+
     server = Flask(__name__)
     ota_manager = OTAManager(CORE_MODULES_PATH)
 
@@ -146,12 +147,15 @@ try:
         action = (request.args.get("action") or "").lower().strip()
         if action != "load" and action != "unload":
             return jsonify({"error": "Invalid action, must be 'load' or 'unload'"}), 400
-        if action == "load":
-            ota_manager.load()
-        elif action == "unload":
-            app.stop_running_downloads()
-            ota_manager.unload()
-        return jsonify({"message": "OTA control applied."}), 200
+        try:
+            if action == "load":
+                ota_manager.load()
+            elif action == "unload":
+                app.stop_running_downloads()
+                ota_manager.unload()
+            return jsonify({"message": "OTA control applied."}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @server.route("/favicon.ico")
     @token_required
@@ -222,7 +226,10 @@ try:
                     "error": "Invalid action, must be one of 'pause', 'resume', 'cancel', 'delete', 'retry'"
                 }
             ), 400
-        app.update_download(id=download_id, action=action)
+        try:
+            app.update_download(id=download_id, action=action)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
         return jsonify({"message": f"Action {action} performed successfully"}), 200
 
     @server.route("/select-entries", methods=["GET"])
@@ -274,6 +281,15 @@ try:
         except Exception:
             return jsonify({"error": "An unexpected error occurred"}), 500
 
+    def init_ota_tasks():
+        ota_manager.snapshot()
+        ota_manager.load()
+
+    # Creamos y arrancamos el hilo justo antes del bloqueo del servidor
+    # daemon=True asegura que si el servidor principal se apaga, este hilo no impida que la app se cierre.
+    ota_thread = threading.Thread(target=init_ota_tasks, daemon=True)
+    ota_thread.start()
+
     if ENV != "production":
         server.run(debug=True, port=PORT, host=HOST)
     else:
@@ -281,8 +297,6 @@ try:
 
         print(f"Iniciando Waitress en {HOST}:{PORT} con 16 hilos...")
         serve(server, host=HOST, port=PORT, threads=16)
-    ota_manager.snapshot()
-    ota_manager.load()
 
 except Exception:
     # Si cualquier cosa falla (ej: módulo no encontrado), lo mandamos al archivo log antes de morir.
