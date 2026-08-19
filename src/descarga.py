@@ -287,6 +287,10 @@ class Descarga:
         finally:
             self._close_logger()
             self._download_in_progress = False
+            self.pause_requested = False
+            self.cancel_requested = False
+            self.delete_requested = False
+            self._select_entries_event.set()
 
     def pausar_descarga(self):
         with self._lock:
