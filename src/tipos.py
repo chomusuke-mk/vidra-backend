@@ -14,15 +14,15 @@ type Color = Literal[
 ]
 
 
-class DownloadCancelled(Exception):
+class DownloadCancelled(KeyboardInterrupt):
     """Excepción personalizada para indicar que la descarga ha sido cancelada"""
 
 
-class DownloadPaused(Exception):
+class DownloadPaused(KeyboardInterrupt):
     """Excepción personalizada para indicar que la descarga ha sido pausada"""
 
 
-class DownloadDeleted(Exception):
+class DownloadDeleted(KeyboardInterrupt):
     """Excepción personalizada para indicar que la descarga ha sido eliminada"""
 
 

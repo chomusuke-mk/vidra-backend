@@ -61,7 +61,7 @@ class YTDLPConnector:
         self._set_entries_to_select = set_entries_to_select
         self.get_selected_entry_ids = get_selected_entry_ids
         self.event = select_entries_event
-        self._handle_requests = handle_requests
+        self.handle_requests = handle_requests
         self.get_logs = get_logs
 
         self.state: dict[str | None, State] = {None: state.copy()}
@@ -82,14 +82,6 @@ class YTDLPConnector:
             self.state_lock[sub_id] = Lock()
             self.info_lock[sub_id] = Lock()
 
-    def handle_requests(self):
-        try:
-            self._handle_requests()
-        except Exception:
-            if hasattr(self, "_current_ytdlp") and self._current_ytdlp is not None:
-                self.logger.warning("cerrando ytdlp por excepción en handle_requests")
-                self._current_ytdlp.close()
-            raise
 
     def emit_state(self, sub_id: str | None = None):
         self._set_state(self.state[sub_id], sub_id)
@@ -605,7 +597,6 @@ class YTDLPConnector:
             self.time_start[None] = time.time()
             self.emit_state()
             self.handle_requests()
-            self._current_ytdlp = ytdlp
             if os.path.exists(info_file):
                 error_code = ytdlp.download_with_info_file(info_file)
             else:
@@ -613,7 +604,6 @@ class YTDLPConnector:
                     f"Info file {info_file} not found, downloading without it"
                 )
                 error_code = ytdlp.download([url])
-            del self._current_ytdlp
             self.handle_requests()
 
             for sub_id, state in self.state.items():
