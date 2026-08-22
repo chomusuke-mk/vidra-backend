@@ -579,7 +579,12 @@ class YTDLPConnector:
             self.emit_state()
 
         # Descargar ==========================================================================
-        self.options["playlist"] = self.info[None]["type"] == "list"
+        if self.info[None]["type"] == "list":
+            self.options["playlist"] = True
+            self.info[None]["file"] = self.options.get("paths", {}).get("home") or ""
+            self.emit_info()
+        else:
+            self.options["playlist"] = False
         command = options_parser(self.options)
         parsed = parse_options(command)
         ydl_opts = parsed.ydl_opts
