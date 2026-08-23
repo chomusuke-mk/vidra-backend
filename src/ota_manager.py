@@ -99,6 +99,16 @@ class OTAManager:
 
             importlib.invalidate_caches()
 
+            def import_packages():
+                with self._lock:
+                    if self._status != "load":
+                        return  # Avoid race condition if unload()
+                    import yt_dlp  # noqa: F401
+                    import yt_dlp_ejs  # noqa: F401
+
+                    print("OTA packages imported successfully.")
+
+            threading.Thread(target=import_packages, daemon=True).start()
             self._status = "load"
             print("OTA load succeeded.")
             return True

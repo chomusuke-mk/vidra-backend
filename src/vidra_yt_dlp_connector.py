@@ -343,13 +343,14 @@ class YTDLPConnector:
             self.state[sub_id]["value"] = "completed"
             self.state[sub_id]["progress_value"] = 1.0
             self.state[sub_id]["progress_color"] = "green"
-            self.state[sub_id]["sub_state"] = ""
+            self.state[sub_id]["sub_state"] = None
             self.state[sub_id]["sub_state_color"] = "green"
             self.state[sub_id]["error_message"] = ""
             self.state[sub_id]["time_left"] = "00:00:00"
             self.state[sub_id]["time_total"] = time.strftime(
                 "%H:%M:%S", time.gmtime(time_spent)
             )
+            self.state[sub_id]["speed"] = None
             self.emit_state(sub_id)
         if self.info[None]["type"] == "list":
             with self._m_state_lock:
@@ -406,6 +407,7 @@ class YTDLPConnector:
                 self.state[None]["progress_color"] = (
                     "green" if is_completed else "orange"
                 )
+                self.state[None]["speed"] = None
                 self.state[None]["time_left"] = "00:00:00"
             self.emit_state(None)
 
@@ -540,6 +542,8 @@ class YTDLPConnector:
             self.emit_state()
             # Esperar a que el usuario seleccione las entradas a descargar
             self.event.wait()
+            # Handle requests while waiting for selection
+            self.handle_requests()
             # Obtener las entradas seleccionadas
             selected_ids = [
                 entry_id

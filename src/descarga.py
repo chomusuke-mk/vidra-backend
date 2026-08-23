@@ -447,6 +447,8 @@ class Descarga:
                     f"No se puede cancelar la descarga {self.id} si esta siendo pausada"
                 )
             self.delete_requested = True
+            self._select_entries_event.set()
+
         self._set_state(
             {
                 **self.state,
