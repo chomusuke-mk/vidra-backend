@@ -148,14 +148,15 @@ def bytes_to_human_readable(num_bytes: float | None, suffix: str = "") -> str:
     # Lista de unidades de medida
     unidades = ["B", "KB", "MB", "GB", "TB", "PB"]
 
-    # Vamos dividiendo por 1024 hasta que el número sea menor a 1024
+    # Vamos dividiendo por 1000 hasta que el número sea menor a 1000
     # o lleguemos a la unidad más grande (Petabytes)
     for unidad in unidades:
-        if num_bytes < 1024.0:
+        if num_bytes < 1000.0:
             return f"{num_bytes:.0f}{unidad}{suffix}"
-        num_bytes /= 1024.0
+        num_bytes /= 1000.0
 
-    # Si el archivo es ridículamente grande (más de 1024 PB), se queda en PB
+
+    # Si el archivo es ridículamente grande (más de 1000 PB), se queda en PB
     return f"{num_bytes:.0f}PB{suffix}"
 
 
