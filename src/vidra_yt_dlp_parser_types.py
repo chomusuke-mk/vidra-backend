@@ -422,6 +422,8 @@ class VidraOptions(TypedDict):
     sponsorblock_mark: NotRequired[list[T_SPONSORBLOCK_CATEGORIES]]
     # Categorías de SponsorBlock para eliminar (“all”, “intro”, “outro”, etc.).
     sponsorblock_remove: NotRequired[list[T_SPONSORBLOCK_CATEGORIES]]
+    # Corta el video según tiempo de inicio y fin especificado(en segundos). False para no cortar.
+    cut_video: NotRequired[Literal[False] | list[int | Literal["inf"]]]
     # Ignora errores de descarga y continúa con el siguiente video.
     ignore_errors: NotRequired[bool]
     # Detiene el proceso de descarga si ocurre un error.
@@ -502,6 +504,9 @@ class VidraOptions(TypedDict):
     xattrs: NotRequired[bool]
     # Corrige errores conocidos del archivo (“never”, “warn”, “force”).
     fixup: NotRequired[T_FIXUP_OPTIONS]
+    # orce keyframes at cuts when downloading/splitting/removing sections. 
+    # This is slow due to needing a re-encode, but the resulting video may have fewer artifacts around the cuts
+    force_keyframes_at_cuts: NotRequired[bool]
     # Ruta al ejecutable de ffmpeg o ffprobe.
     ffmpeg_location: NotRequired[str]
     # Convierte miniaturas al formato indicado (“jpg”, “png”, “webp”).
@@ -600,6 +605,18 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                 and all(
                     isinstance(item, str) and item in SPONSORBLOCK_CATEGORIES
                     for item in value
+                )
+            ):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "cut_video":
+            if not (
+                value is False
+                or (
+                    isinstance(value, list)
+                    and len(value) == 2
+                    and isinstance(value[0], int)
+                    and (isinstance(value[1], int) or value[1] == "inf")
                 )
             ):
                 print(f"Invalid value for key '{key}': {value}")
@@ -724,6 +741,10 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                 return False
         elif key == "fixup":
             if not (isinstance(value, str) and value in FIXUP_OPTIONS):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "force_keyframes_at_cuts":
+            if not isinstance(value, bool):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "ffmpeg_location":

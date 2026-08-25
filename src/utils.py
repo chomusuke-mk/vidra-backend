@@ -152,7 +152,10 @@ def bytes_to_human_readable(num_bytes: float | None, suffix: str = "") -> str:
     # o lleguemos a la unidad más grande (Petabytes)
     for unidad in unidades:
         if num_bytes < 1000.0:
-            return f"{num_bytes:.0f}{unidad}{suffix}"
+            if num_bytes < 10.0:
+                return f"{num_bytes:.1f}{unidad}{suffix}"
+            else:
+                return f"{num_bytes:.0f}{unidad}{suffix}"
         num_bytes /= 1000.0
 
 

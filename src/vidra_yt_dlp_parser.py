@@ -16,6 +16,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "playlist": False,
     "sponsorblock_mark": [],
     "sponsorblock_remove": [],
+    "cut_video": False,
     "ignore_errors": False,  # True=Ignorar errores, no lanzar excepción
     "abort_on_error": False,  # False=Si se lanza excepción, esta es ignorada
     "quiet": True,  # True=No imprimir detalles de la descarga
@@ -54,6 +55,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "format": "",
     "xattrs": False,
     "fixup": "force",
+    "force_keyframes_at_cuts": True,
     "ffmpeg_location": "",
     "convert_thumbnails": "webp",
     "write_subs": False,
@@ -96,6 +98,7 @@ def options_parser(options: VidraOptions) -> list[str]:
         and "playlist" in options
         and "sponsorblock_mark" in options
         and "sponsorblock_remove" in options
+        and "cut_video" in options
         and "ignore_errors" in options
         and "abort_on_error" in options
         and "quiet" in options
@@ -134,6 +137,7 @@ def options_parser(options: VidraOptions) -> list[str]:
         and "format" in options
         and "xattrs" in options
         and "fixup" in options
+        and "force_keyframes_at_cuts" in options
         and "ffmpeg_location" in options
         and "convert_thumbnails" in options
         and "write_subs" in options
@@ -169,6 +173,7 @@ def options_parser(options: VidraOptions) -> list[str]:
     playlist = options["playlist"]
     sponsorblock_mark = options["sponsorblock_mark"]
     sponsorblock_remove = options["sponsorblock_remove"]
+    cut_video = options["cut_video"]
     ignore_errors = options["ignore_errors"]
     abort_on_error = options["abort_on_error"]
     quiet = options["quiet"]
@@ -207,6 +212,7 @@ def options_parser(options: VidraOptions) -> list[str]:
     format = options["format"]
     xattrs = options["xattrs"]
     fixup = options["fixup"]
+    force_keyframes_at_cuts = options["force_keyframes_at_cuts"]
     ffmpeg_location = options["ffmpeg_location"]
     convert_thumbnails = options["convert_thumbnails"]
     write_subs = options["write_subs"]
@@ -310,6 +316,8 @@ def options_parser(options: VidraOptions) -> list[str]:
         removals = [str(item) for item in sponsorblock_remove if item]
         if removals:
             comando.extend(["--sponsorblock-remove", ",".join(removals)])
+    if cut_video:
+        comando.extend(["--download-sections", f"*{cut_video[0]}-{cut_video[1]}"])    
     if ignore_errors:
         comando.append("--ignore-errors")
     if abort_on_error:
@@ -494,6 +502,8 @@ def options_parser(options: VidraOptions) -> list[str]:
         comando.append("--xattrs")
     if fixup:
         comando.extend(["--fixup", fixup])
+    if force_keyframes_at_cuts:
+        comando.append("--force-keyframes-at-cuts")
     if ffmpeg_location:
         comando.extend(["--ffmpeg-location", ffmpeg_location])
     if convert_thumbnails:
