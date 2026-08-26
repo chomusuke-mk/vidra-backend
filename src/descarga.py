@@ -34,7 +34,7 @@ class Descarga:
         if (
             not options.setdefault("force_overwrites", False)
             and f"_{id}_"
-            not in options.setdefault("output", ["title", "-", "id", ".", "ext"])
+            not in options.setdefault("output", ["title", ".", "ext"])
             and "output" in options
         ):
             options["output"].insert(-2, f"_{id}_")
@@ -48,7 +48,7 @@ class Descarga:
 
         # Dynamic properties
         self._delta_manager = delta_manager
-        self._log_file = os.path.join(logs_path, f"{self.id}.log")
+        self._log_file = self.get_log_file_path(logs_path, id)
         self._logger: Logger | None = None
         self._log_stream: io.StringIO | None = None
         self.sub_descargas: list[Descarga_Hija] = []
@@ -68,6 +68,10 @@ class Descarga:
         self.pause_requested = False
         self.cancel_requested = False
         self.delete_requested = False
+
+    @staticmethod
+    def get_log_file_path(logs_path: str, descarga_id: str) -> str:
+        return os.path.join(logs_path, f"{descarga_id}.log")
 
     def _get_selected_entry_ids(self) -> list[str]:
         if self.state["value"] != "awaiting_selection":

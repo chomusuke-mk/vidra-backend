@@ -428,6 +428,8 @@ class App:
             descarga_id = str(
                 self._get_next_id(max((int(d.id) for d in self.descargas), default=0))
             )
+        if os.path.exists(Descarga.get_log_file_path(self.logs_path, descarga_id)):
+            os.remove(Descarga.get_log_file_path(self.logs_path, descarga_id))
         descarga = Descarga(
             id=descarga_id,
             info={

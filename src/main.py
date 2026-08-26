@@ -53,6 +53,10 @@ try:
     DATA_PATH = os.path.abspath(os.environ.get("DATA_PATH", "./temp/data"))
     TEMP_PATH = os.path.abspath(os.environ.get("TEMP_PATH", "./temp/temp"))
     FFMPEG_PATH = os.path.abspath(os.environ.get("FFMPEG_PATH", "./temp/ffmpeg"))
+    FFPROBE_PATH = os.path.join(
+        os.path.dirname(FFMPEG_PATH),
+        os.path.basename(FFMPEG_PATH).replace("ffmpeg", "ffprobe"),
+    )
     QUICKJS_PATH = os.path.abspath(os.environ.get("QUICKJS_PATH", "./temp/quickjs"))
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
@@ -67,9 +71,6 @@ try:
     cert_path = certifi.where()
     os.environ["SSL_CERT_FILE"] = cert_path
     os.environ["REQUESTS_CA_BUNDLE"] = cert_path
-    os.environ["PATH"] = (
-        f"{os.path.dirname(FFMPEG_PATH)}{os.pathsep}{os.environ.get('PATH', '')}"
-    )
     if sys.platform == "linux":
         os.environ.setdefault("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
         os.environ.setdefault("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
@@ -80,11 +81,27 @@ try:
     os.makedirs(os.environ["XDG_CACHE_HOME"], exist_ok=True)
     logging.basicConfig(level=LOG_LEVEL)
 
+    # --- CREACIÓN DE SYMBOLIC LINKS PARA FFMPEG ---
+    os.makedirs(os.path.join(TEMP_PATH, "binaries"), exist_ok=True)
+    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "ffmpeg")):
+        os.remove(os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
+    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "ffprobe")):
+        os.remove(os.path.join(TEMP_PATH, "binaries", "ffprobe"))
+    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "quickjs")):
+        os.remove(os.path.join(TEMP_PATH, "binaries", "quickjs"))
+    os.symlink(FFMPEG_PATH, os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
+    os.symlink(FFPROBE_PATH, os.path.join(TEMP_PATH, "binaries", "ffprobe"))
+    os.symlink(QUICKJS_PATH, os.path.join(TEMP_PATH, "binaries", "quickjs"))
+    os.environ["PATH"] = (
+        f"{os.path.join(TEMP_PATH, 'binaries')}{os.pathsep}{os.environ.get('PATH', '')}"
+    )
+
     # --- PRINT DE VARIABLES DE ENTORNO PARA DEBUGGING ---
     print("LOGS_PATH:", LOGS_PATH)
     print("DATA_PATH:", DATA_PATH)
     print("TEMP_PATH:", TEMP_PATH)
     print("FFMPEG_PATH:", FFMPEG_PATH)
+    print("FFPROBE_PATH:", FFPROBE_PATH)
     print("QUICKJS_PATH:", QUICKJS_PATH)
     print("Current platform:", sys.platform)
     print("XDG_CONFIG_HOME:", os.environ["XDG_CONFIG_HOME"])

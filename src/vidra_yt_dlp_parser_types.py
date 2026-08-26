@@ -518,6 +518,8 @@ class VidraOptions(TypedDict):
     # Download Options ==========================================================================
     # Plantilla de nombre del archivo de salida.
     output: NotRequired[list[str | T_OUTPUT_TEMPLATE_VARIABLES]]
+    # Limita el nombre del archivo sin incluir la extensión
+    trim_filenames: NotRequired[Literal[False] | int]
     # Directorios donde guardar los diferentes tipos de archivos.
     paths: NotRequired[
         dict[
@@ -768,6 +770,10 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
                     for item in value
                 )
             ):
+                print(f"Invalid value for key '{key}': {value}")
+                return False
+        elif key == "trim_filenames":
+            if not (isinstance(value, int) or value is False):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
         elif key == "paths":

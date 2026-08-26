@@ -62,6 +62,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "write_auto_subs": False,
     "sub_format": "srt",
     "output": ["title", "-", "id", ".", "ext"],
+    "trim_filenames": 50,
     "paths": {},
     "download_archive": False,
     "playlist_ids": "ALL_ITEMS",
@@ -144,6 +145,7 @@ def options_parser(options: VidraOptions) -> list[str]:
         and "write_auto_subs" in options
         and "sub_format" in options
         and "output" in options
+        and "trim_filenames" in options
         and "paths" in options
         and "download_archive" in options
         and "playlist_ids" in options
@@ -219,6 +221,7 @@ def options_parser(options: VidraOptions) -> list[str]:
     write_auto_subs = options["write_auto_subs"]
     sub_format = options["sub_format"]
     output = options["output"]
+    trim_filenames = options["trim_filenames"]
     paths = options["paths"]
     download_archive = options["download_archive"]
     playlist_ids = options["playlist_ids"]
@@ -426,6 +429,8 @@ def options_parser(options: VidraOptions) -> list[str]:
             else:
                 nombre += i
         comando.extend(["--output", nombre])
+    if trim_filenames:
+        comando.extend(["--trim-filenames", str(trim_filenames)])
     if force_overwrites:
         comando.append("--force-overwrites")
     else:
