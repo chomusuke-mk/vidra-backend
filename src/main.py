@@ -83,11 +83,11 @@ try:
 
     # --- CREACIÓN DE SYMBOLIC LINKS PARA FFMPEG ---
     os.makedirs(os.path.join(TEMP_PATH, "binaries"), exist_ok=True)
-    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "ffmpeg")):
+    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffmpeg")):
         os.remove(os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
-    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "ffprobe")):
+    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffprobe")):
         os.remove(os.path.join(TEMP_PATH, "binaries", "ffprobe"))
-    if os.path.exists(os.path.join(TEMP_PATH, "binaries", "quickjs")):
+    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "quickjs")):
         os.remove(os.path.join(TEMP_PATH, "binaries", "quickjs"))
     os.symlink(FFMPEG_PATH, os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
     os.symlink(FFPROBE_PATH, os.path.join(TEMP_PATH, "binaries", "ffprobe"))
