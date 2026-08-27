@@ -141,7 +141,9 @@ def to_bool(value: Any) -> bool | None:
     return None
 
 
-def bytes_to_human_readable(num_bytes: float | None, suffix: str = "") -> str:
+def bytes_to_human_readable(
+    num_bytes: float | None, suffix: str = "", with_no_decimals: bool = False
+) -> str:
     if num_bytes is None:
         return "--"
 
@@ -152,12 +154,11 @@ def bytes_to_human_readable(num_bytes: float | None, suffix: str = "") -> str:
     # o lleguemos a la unidad más grande (Petabytes)
     for unidad in unidades:
         if num_bytes < 1000.0:
-            if num_bytes < 10.0:
-                return f"{num_bytes:.1f}{unidad}{suffix}"
-            else:
+            if with_no_decimals or num_bytes >= 10.0:
                 return f"{num_bytes:.0f}{unidad}{suffix}"
+            else:
+                return f"{num_bytes:.1f}{unidad}{suffix}"
         num_bytes /= 1000.0
-
 
     # Si el archivo es ridículamente grande (más de 1000 PB), se queda en PB
     return f"{num_bytes:.0f}PB{suffix}"

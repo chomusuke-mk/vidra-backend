@@ -62,7 +62,7 @@ DEFAULT_OPTIONS: Final[VidraOptions] = {
     "write_auto_subs": False,
     "sub_format": "srt",
     "output": ["title", "-", "id", ".", "ext"],
-    "trim_filenames": 50,
+    "trim_filenames": 150,
     "paths": {},
     "download_archive": False,
     "playlist_ids": "ALL_ITEMS",
@@ -425,7 +425,7 @@ def options_parser(options: VidraOptions) -> list[str]:
         nombre = ""
         for i in output:
             if i in OUTPUT_TEMPLATE_VARIABLES:
-                nombre += f"%({i})s"
+                nombre += f"%({i}).75s"
             else:
                 nombre += i
         comando.extend(["--output", nombre])
