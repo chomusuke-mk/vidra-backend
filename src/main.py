@@ -82,19 +82,24 @@ try:
     logging.basicConfig(level=LOG_LEVEL)
 
     # --- CREACIÓN DE SYMBOLIC LINKS PARA FFMPEG ---
-    os.makedirs(os.path.join(TEMP_PATH, "binaries"), exist_ok=True)
-    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffmpeg")):
-        os.remove(os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
-    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffprobe")):
-        os.remove(os.path.join(TEMP_PATH, "binaries", "ffprobe"))
-    if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "quickjs")):
-        os.remove(os.path.join(TEMP_PATH, "binaries", "quickjs"))
-    os.symlink(FFMPEG_PATH, os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
-    os.symlink(FFPROBE_PATH, os.path.join(TEMP_PATH, "binaries", "ffprobe"))
-    os.symlink(QUICKJS_PATH, os.path.join(TEMP_PATH, "binaries", "quickjs"))
-    os.environ["PATH"] = (
-        f"{os.path.join(TEMP_PATH, 'binaries')}{os.pathsep}{os.environ.get('PATH', '')}"
-    )
+    if sys.platform == "android":
+        os.makedirs(os.path.join(TEMP_PATH, "binaries"), exist_ok=True)
+        if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffmpeg")):
+            os.remove(os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
+        if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "ffprobe")):
+            os.remove(os.path.join(TEMP_PATH, "binaries", "ffprobe"))
+        if os.path.lexists(os.path.join(TEMP_PATH, "binaries", "quickjs")):
+            os.remove(os.path.join(TEMP_PATH, "binaries", "quickjs"))
+        os.symlink(FFMPEG_PATH, os.path.join(TEMP_PATH, "binaries", "ffmpeg"))
+        os.symlink(FFPROBE_PATH, os.path.join(TEMP_PATH, "binaries", "ffprobe"))
+        os.symlink(QUICKJS_PATH, os.path.join(TEMP_PATH, "binaries", "quickjs"))
+        os.environ["PATH"] = (
+            f"{os.path.join(TEMP_PATH, 'binaries')}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
+    else:
+        os.environ["PATH"] = (
+            f"{os.path.dirname(FFMPEG_PATH)}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
 
     # --- PRINT DE VARIABLES DE ENTORNO PARA DEBUGGING ---
     print("LOGS_PATH:", LOGS_PATH)
