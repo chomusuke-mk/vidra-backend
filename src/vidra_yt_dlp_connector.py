@@ -233,14 +233,6 @@ class YTDLPConnector:
             downloaded_bytes_str = bytes_to_human_readable(downloaded_bytes)
             total_bytes = to_int(d.get("total_bytes", d.get("total_bytes_estimate")))
             total_bytes_str = bytes_to_human_readable(total_bytes)
-            total_bytes_str = (
-                (self.state[sub_id].get("progress_label", "") or "").split("/")[1]
-                if total_bytes_str == "--"
-                and "progress_label" in self.state[sub_id]
-                and isinstance(self.state[sub_id].get("progress_label"), str)
-                and (self.state[sub_id].get("progress_label", "") or "").count("/") == 1
-                else total_bytes_str
-            )
             speed = to_float(d.get("speed"))
             eta = to_float(d.get("eta"))
             speed_str = bytes_to_human_readable(
@@ -248,6 +240,15 @@ class YTDLPConnector:
             )
 
             with self.state_lock[sub_id]:
+                total_bytes_str = (
+                    (self.state[sub_id].get("progress_label", "") or "").split("/")[1]
+                    if total_bytes_str == "--"
+                    and "progress_label" in self.state[sub_id]
+                    and isinstance(self.state[sub_id].get("progress_label"), str)
+                    and (self.state[sub_id].get("progress_label", "") or "").count("/")
+                    == 1
+                    else total_bytes_str
+                )
                 self.state[sub_id]["value"] = "in_progress"
                 self.state[sub_id]["sub_state"] = "downloading"
                 self.state[sub_id]["sub_state_color"] = "blue"
