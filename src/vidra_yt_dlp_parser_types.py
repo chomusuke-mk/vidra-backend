@@ -463,6 +463,8 @@ class VidraOptions(TypedDict):
     add_headers: NotRequired[dict[str, str]]
     # Archivo Netscape de cookies para autenticación.
     cookies: NotRequired[str | Literal[False]]
+    # Carpeta con Cookies exportadas desde un WebView.
+    cookies_from_webview: NotRequired[Literal[False] | str]
     # Carga cookies directamente de un navegador instalado.
     cookies_from_browser: NotRequired[Literal[False] | T_BROWSERS]
     # Usuario o correo para autenticación.
@@ -676,7 +678,7 @@ def is_valid_options(options: Any) -> TypeGuard[VidraOptions]:
             ):
                 print(f"Invalid value for key '{key}': {value}")
                 return False
-        elif key == "cookies":
+        elif key == "cookies" or key == "cookies_from_webview":
             if not (isinstance(value, str) or value is False):
                 print(f"Invalid value for key '{key}': {value}")
                 return False

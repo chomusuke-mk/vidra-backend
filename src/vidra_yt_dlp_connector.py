@@ -453,13 +453,17 @@ class YTDLPConnector:
         self.emit_state()
         temp_path = self.options.get("paths", {}).get("temp") or ""
         info_file = os.path.join(temp_path, f"{self.id}_info.json")
+        cookie_file_refreshed = False
         # Lazy import to reduce startup time
         from yt_dlp import YoutubeDL, parse_options
 
         # Obtener información ================================================================
         if self.info[None]["type"] == "unknown":
             self.logger.info(f"Extracting information for {url}")
-            command = options_parser(self.options)
+            command = options_parser(
+                self.options, force_recreate_cookie_file=not cookie_file_refreshed
+            )
+            cookie_file_refreshed = True
             self.logger.info(f"YDL options: {command}")
             parsed = parse_options(command)
             ydl_opts = parsed.ydl_opts
@@ -599,7 +603,10 @@ class YTDLPConnector:
             self.emit_info()
         else:
             self.options["playlist"] = False
-        command = options_parser(self.options)
+        command = options_parser(
+            self.options, force_recreate_cookie_file=not cookie_file_refreshed
+        )
+        cookie_file_refreshed = True
         parsed = parse_options(command)
         ydl_opts = parsed.ydl_opts
         ydl_opts["logger"] = YTDLPLoggerAdapter(logger=self.logger)
